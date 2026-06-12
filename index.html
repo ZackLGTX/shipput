@@ -44,7 +44,8 @@
 
   .frame{background:var(--panel);border:1px solid var(--line);border-radius:12px;
     box-shadow:var(--shadow);overflow:hidden}
-  .gantt{display:flex;align-items:stretch;overflow:auto;direction:rtl;max-height:calc(100vh - 24px)}
+  .gantt{display:flex;align-items:flex-start;overflow:auto;direction:rtl;max-height:calc(100vh - 24px)}
+  .tasks,.timeline{min-height:100%}
 
   .tasks{flex:0 0 var(--panelw);position:sticky;right:0;z-index:5;background:var(--panel);
     border-inline-start:2px solid var(--line-strong)}

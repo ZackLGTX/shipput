@@ -13,7 +13,7 @@
     --line:#E4DFD4; --line-strong:#D2CBBC; --weekend:#EDE8DC; --today:#C2502E;
     --s1:#C2502E; --s2:#2F6F6A; --s3:#B8862F; --s4:#4B5D8A; --s5:#7A6A99; --s6:#5E7A3A;
     --lead:#6B6256;
-    --col:38px; --rowh:40px; --stageh:42px; --addh:40px; --headh:58px;
+    --col:52px; --rowh:40px; --stageh:42px; --addh:40px; --headh:76px;
     --panelw:330px; --radius:7px;
     --shadow:0 1px 2px rgba(34,39,46,.06), 0 8px 24px rgba(34,39,46,.06);
   }
@@ -91,13 +91,13 @@
 
   .timeline{flex:1 1 auto;min-width:max-content;direction:ltr;position:relative}
   .tl-head{display:flex;flex-direction:column;height:var(--headh);border-bottom:1px solid var(--line)}
-  .months{display:flex;height:26px}
-  .month{font-size:12px;font-weight:700;color:var(--ink-soft);display:flex;align-items:center;
+  .months{display:flex;height:30px}
+  .month{font-size:15px;font-weight:700;color:var(--ink-soft);display:flex;align-items:center;
     padding-inline-start:8px;border-inline-end:1px solid var(--line);white-space:nowrap}
-  .days{display:flex;height:32px}
+  .days{display:flex;height:46px}
   .day{width:var(--col);flex:0 0 var(--col);display:flex;flex-direction:column;align-items:center;
-    justify-content:center;border-inline-end:1px solid var(--line);font-size:11px;color:var(--ink-soft)}
-  .day .dnum{font-weight:700;color:var(--ink);font-size:12px}
+    justify-content:center;border-inline-end:1px solid var(--line);font-size:14px;color:var(--ink-soft)}
+  .day .dnum{font-weight:700;color:var(--ink);font-size:16px}
   .day.weekend{background:var(--weekend)} .day.weekend .dnum{color:var(--ink-soft)}
 
   .grid{position:relative}

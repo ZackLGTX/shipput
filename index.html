@@ -265,7 +265,7 @@ function save(){
     const r=await fetch(SB_URL+"&select=data",{headers:SB_HEADERS});
     const rows=await r.json();
     const d=rows&&rows[0]&&rows[0].data;
-    if(d&&d.version===4){data=d;render();}
+    if(d&&d.version===4){data=d;render();focusToday();}
   }catch(err){console.warn("remote load failed",err);}
 })();
 
@@ -521,7 +521,17 @@ document.getElementById("export").onclick=()=>{const b=new Blob([JSON.stringify(
 document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
 document.getElementById("importFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);render();}catch(err){alert("קובץ לא תקין");}};r.readAsText(f);};
 
+/* focus the view on today's column (clamped to the plan range) */
+function focusToday(){
+  const L=computeLayout();
+  const today=new Date();today.setHours(0,0,0,0);
+  const tc=Math.max(0,Math.min(L.total-1,colIndex(L.min,today)));
+  const cell=document.querySelectorAll(".gridbg .gcell")[tc];
+  if(cell) cell.scrollIntoView({inline:"center",block:"nearest"});
+}
+
 render();
+focusToday();
 </script>
 </body>
 </html>

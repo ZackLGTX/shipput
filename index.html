@@ -125,6 +125,39 @@
     border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);border-radius:3px}
   .ms-label{position:absolute;top:10px;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap}
 
+  /* done / overdue / drag */
+  .task.done .tname{text-decoration:line-through;color:var(--ink-soft)}
+  .tdone{width:15px;height:15px;accent-color:#4a7c59;flex:0 0 auto;cursor:pointer}
+  .owner{flex:0 0 56px;width:56px;border:1px solid transparent;background:#F4F1E8;border-radius:5px;
+    font-family:inherit;font-size:11px;color:var(--ink);padding:3px 4px;text-align:center}
+  .owner:focus{outline:none;border-color:var(--line-strong);background:#fff}
+  .owner::placeholder{color:#c2bcae}
+  .bar{cursor:grab;touch-action:none}
+  .bar.done{opacity:.4}
+  .bar-out.done{text-decoration:line-through;color:var(--ink-soft)}
+  .ms-label.done{text-decoration:line-through;color:var(--ink-soft)}
+  .bar.overdue{box-shadow:0 0 0 2px var(--today)}
+  .milestone{cursor:pointer;touch-action:none}
+  .milestone.done{opacity:.4}
+  @keyframes flashbar{50%{box-shadow:0 0 0 5px rgba(191,90,42,.5)}}
+  .flash{animation:flashbar .8s ease 3}
+
+  /* dashboard */
+  .dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:0 0 18px}
+  .dash .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px 14px}
+  .dash h3{margin:0 0 8px;font-size:13px;color:var(--ink-soft);font-weight:700}
+  .dash .di{display:flex;align-items:center;gap:7px;padding:3px 4px;font-size:13px;cursor:pointer;border-radius:6px}
+  .dash .di:hover{background:#F4F1E8}
+  .dash .di .dt{color:var(--ink-soft);font-size:11px;margin-inline-start:auto;white-space:nowrap}
+  .dash .di .sw2{width:9px;height:9px;border-radius:2px;flex:0 0 auto}
+  .dash .empty{color:#c2bcae;font-size:12.5px}
+  .dash .di.od{color:var(--today);font-weight:700}
+  .progress-wrap{height:8px;background:#EFEBE0;border-radius:99px;overflow:hidden;margin-top:6px}
+  .progress-fill{height:100%;background:#4a7c59;border-radius:99px;transition:width .3s}
+  .dash .big{font-size:22px;font-weight:800;font-family:"Frank Ruhl Libre",serif}
+  .sync{font-size:12px;font-weight:600;color:var(--ink-soft)}
+  .sync.ok{color:#4a7c59}.sync.err{color:var(--today)}
+
   .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:18px;font-size:13px;color:var(--ink-soft)}
   .legend .item{display:flex;align-items:center;gap:7px}
   .legend .sw{width:13px;height:13px;border-radius:3px}
@@ -163,6 +196,7 @@
     </div>
     <div class="spacer"></div>
     <div class="actions">
+      <span class="sync" id="sync"></span>
       <span class="seglabel">מיון:</span>
       <div class="seg" id="sortSeg">
         <button data-mode="date">לפי תאריך</button>
@@ -178,6 +212,8 @@
 
   <div class="chips" id="chips"></div>
 
+  <div class="dash" id="dash"></div>
+
   <div class="frame"><div class="gantt" id="gantt"></div></div>
 
   <div class="legend" id="legend"></div>
@@ -189,7 +225,7 @@
     <button class="add-task" id="addOpen">+ פריט</button>
   </section>
 
-  <footer>תאריכים בפורמט יום.חודש · נשמר אוטומטית בדפדפן זה · לשיתוף השתמשו ב"ייצוא"</footer>
+  <footer>תאריכים בפורמט יום.חודש · נשמר ומסונכרן אוטומטית לכל מי שפתח את הדף · "ייצוא" לגיבוי קובץ</footer>
 </div>
 
 <script>
@@ -252,24 +288,39 @@ const SB_KEY="sb_publishable_S-kajXKRNRs1KV1ZRuoXgg_HUbclG9i";
 const SB_HEADERS={apikey:SB_KEY,Authorization:"Bearer "+SB_KEY,"Content-Type":"application/json"};
 let data=load();
 function load(){ try{const r=localStorage.getItem(STORE_KEY); if(r){const d=JSON.parse(r); if(d.version===4) return d;}}catch(e){} return structuredClone(DEFAULT_DATA); }
-let syncTimer=null;
+let syncTimer=null,lastRemoteStamp=null;
+function setSync(s){const el=document.getElementById("sync");if(!el)return;
+  el.className="sync "+s;
+  el.textContent=s==="ok"?"מסונכרן ✓":(s==="saving"?"שומר…":"לא מסונכרן");}
 function save(){
   try{localStorage.setItem(STORE_KEY,JSON.stringify(data));}catch(e){}
   clearTimeout(syncTimer);
   syncTimer=setTimeout(()=>{
+    setSync("saving");
     fetch(SB_URL,{method:"PATCH",headers:SB_HEADERS,
       body:JSON.stringify({data:data,updated_at:new Date().toISOString()})})
-      .catch(err=>console.warn("sync failed",err));
+      .then(r=>setSync(r.ok?"ok":"err"))
+      .catch(()=>setSync("err"));
   },800);
 }
-(async function loadRemote(){
+async function pullRemote(initial){
   try{
-    const r=await fetch(SB_URL+"&select=data",{headers:SB_HEADERS});
-    const rows=await r.json();
-    const d=rows&&rows[0]&&rows[0].data;
-    if(d&&d.version===4){data=d;render();focusToday();}
-  }catch(err){console.warn("remote load failed",err);}
-})();
+    const r=await fetch(SB_URL+"&select=data,updated_at",{headers:SB_HEADERS});
+    const rows=await r.json();const row=rows&&rows[0];
+    if(!row||!row.data||row.data.version!==4) return;
+    if(!initial&&row.updated_at===lastRemoteStamp) return;
+    lastRemoteStamp=row.updated_at;
+    if(JSON.stringify(row.data)!==JSON.stringify(data)){
+      /* don't clobber a field mid-typing; the next poll will catch up */
+      if(!initial&&document.activeElement&&document.activeElement.tagName==="INPUT") return;
+      data=row.data;render();
+      if(initial) focusToday();
+    }
+    setSync("ok");
+  }catch(err){if(!initial)setSync("err");console.warn("remote load failed",err);}
+}
+pullRemote(true);
+setInterval(()=>pullRemote(false),20000);
 
 /* dates */
 const DAY_HE=["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"];
@@ -303,6 +354,10 @@ const COLW=parseFloat(cssVar("--col"))||52;
 function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
 const barLabels=new Map();
+const barEls=new Map();
+function colorOf(st){return st.color&&st.color.startsWith("--")?cssVar(st.color):st.color;}
+function todayD(){const d=new Date();d.setHours(0,0,0,0);return d;}
+function isOverdue(t){return !t.done&&pd(t.end||t.start)<todayD();}
 function sortStages(){
   data.stages.forEach(st=>{
     st.tasks.sort((a,b)=>{
@@ -315,7 +370,7 @@ function sortStages(){
 function render(){
   if(data.sortMode!=="manual") sortStages();
   const L=computeLayout();
-  renderChips(L); renderLegend(); renderGantt(L); renderOpen(); renderSortToggle();
+  renderChips(L); renderLegend(); renderGantt(L); renderDash(); renderOpen(); renderSortToggle();
   save();
 }
 
@@ -367,11 +422,53 @@ function renderChips(L){
   items.forEach(([k,v])=>{const e=document.createElement("div");e.className="chip";e.innerHTML=k+": <b>"+v+"</b>";c.appendChild(e);});
 }
 
+function renderDash(){
+  const el=document.getElementById("dash");el.innerHTML="";
+  const today=todayD(),week=addDays(today,7);
+  const ts=allTasks().map(x=>x.t);
+  const done=ts.filter(t=>t.done).length;
+  const overdue=ts.filter(isOverdue);
+  const active=ts.filter(t=>!t.done&&pd(t.start)<=today&&pd(t.end||t.start)>=today);
+  const soon=ts.filter(t=>!t.done&&pd(t.start)>today&&pd(t.start)<=week);
+  const pct=ts.length?Math.round(done/ts.length*100):0;
+  const stageOf=t=>data.stages.find(s=>s.tasks.includes(t));
+  function card(title,items,emptyMsg,od){
+    const c=document.createElement("div");c.className="card";
+    const h=document.createElement("h3");h.textContent=title;c.appendChild(h);
+    if(!items.length){const e=document.createElement("div");e.className="empty";e.textContent=emptyMsg;c.appendChild(e);}
+    items.slice(0,6).forEach(t=>{
+      const di=document.createElement("div");di.className="di"+(od?" od":"");
+      const sw=document.createElement("span");sw.className="sw2";sw.style.background=colorOf(stageOf(t));
+      const nm=document.createElement("span");nm.textContent=t.name;
+      const dt=document.createElement("span");dt.className="dt";
+      dt.textContent=fmtHeb(pd(t.start))+(t.end&&t.end!==t.start?"–"+fmtHeb(pd(t.end)):"");
+      di.append(sw,nm,dt);
+      di.onclick=()=>focusTask(t);
+      c.appendChild(di);
+    });
+    if(items.length>6){const m=document.createElement("div");m.className="empty";m.textContent="+"+(items.length-6)+" נוספות";c.appendChild(m);}
+    return c;
+  }
+  const prog=document.createElement("div");prog.className="card";
+  prog.innerHTML='<h3>התקדמות</h3><div class="big">'+pct+'%</div>'+
+    '<div class="progress-wrap"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
+    '<div class="empty" style="margin-top:6px">'+done+' מתוך '+ts.length+' משימות הושלמו</div>';
+  el.append(prog,
+    card("באיחור",overdue,"אין משימות באיחור",true),
+    card("פעיל היום",active,"אין משימות פעילות היום"),
+    card("בשבוע הקרוב",soon,"אין משימות מתוכננות לשבוע הקרוב"));
+}
+function focusTask(t){
+  const el=barEls.get(t);if(!el)return;
+  el.scrollIntoView({inline:"center",block:"center"});
+  el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),2600);
+}
+
 function renderLegend(){
   const l=document.getElementById("legend");l.innerHTML="";
   data.stages.forEach(st=>{
     const it=document.createElement("div");it.className="item";
-    it.innerHTML='<span class="sw" style="background:'+cssVar(st.color)+'"></span>'+esc(st.name);
+    it.innerHTML='<span class="sw" style="background:'+colorOf(st)+'"></span>'+esc(st.name);
     l.appendChild(it);
   });
   const m=document.createElement("div");m.className="item";m.innerHTML='<span class="dm"></span>מדידה / אבן דרך';l.appendChild(m);
@@ -380,7 +477,7 @@ function renderLegend(){
 
 function renderGantt(L){
   const g=document.getElementById("gantt");g.innerHTML="";
-  barLabels.clear();
+  barLabels.clear();barEls.clear();
   const widthPx=L.total*COLW;
 
   /* panel */
@@ -389,24 +486,38 @@ function renderGantt(L){
 
   data.stages.forEach((st,si)=>{
     const stage=document.createElement("div");stage.className="stage";
-    const cv=cssVar(st.color);
+    const cv=colorOf(st);
     const srow=document.createElement("div");srow.className="stage-row";
     const sw=document.createElement("span");sw.className="swatch";sw.style.background=cv;
+    sw.title="לחצו לשינוי צבע";sw.style.cursor="pointer";
+    sw.onclick=()=>{
+      const inp=document.createElement("input");inp.type="color";
+      inp.value=/^#[0-9a-fA-F]{6}$/.test(cv)?cv:"#888888";
+      inp.oninput=()=>{st.color=inp.value;render();};
+      inp.click();
+    };
     const sname=document.createElement("input");sname.className="stage-name";sname.value=st.name;
     sname.oninput=()=>{st.name=sname.value;renderLegend();save();};
-    const smeta=document.createElement("span");smeta.className="stage-meta";smeta.textContent=st.tasks.length+" משימות";
+    const smeta=document.createElement("span");smeta.className="stage-meta";
+    smeta.textContent=st.tasks.filter(x=>x.done).length+"/"+st.tasks.length+" משימות";
     srow.append(sw,sname,smeta);stage.appendChild(srow);
 
     const taskList=document.createElement("div");taskList.className="task-list";taskList._si=si;
 
     st.tasks.forEach((t,ti)=>{
-      const row=document.createElement("div");row.className="task";row._task=t;
+      const row=document.createElement("div");row.className="task"+(t.done?" done":"");row._task=t;
       const grip=document.createElement("span");grip.className="grip";grip.textContent="⠿";grip.title="גרירה לסידור";
       grip.addEventListener("pointerdown",e=>startRowDrag(e,row,taskList));
+      const chk=document.createElement("input");chk.type="checkbox";chk.className="tdone";
+      chk.checked=!!t.done;chk.title="בוצע";
+      chk.onchange=()=>{t.done=chk.checked;render();};
       const dot=document.createElement("span");dot.className="dot";
       dot.style.color=cv; dot.textContent = t.kind==="milestone"?"◆":(t.kind==="lead"?"▦":"▮");
       const name=document.createElement("input");name.className="tname";name.value=t.name;
-      name.oninput=()=>{t.name=name.value;const lb=barLabels.get(t);if(lb)lb.textContent=name.value;save();};
+      name.oninput=()=>{t.name=name.value;const lb=barLabels.get(t);if(lb)lb.textContent=(t.done?"✓ ":"")+name.value;save();};
+      const owner=document.createElement("input");owner.className="owner";owner.placeholder="אחראי";
+      owner.value=t.owner||"";
+      owner.oninput=()=>{t.owner=owner.value;save();};
 
       const dates=document.createElement("div");dates.className="dates";
       const ds=document.createElement("input");ds.className="dinput";ds.value=fmtHeb(pd(t.start));
@@ -425,7 +536,7 @@ function renderGantt(L){
       const del=document.createElement("button");del.className="del";del.textContent="×";del.title="מחיקה";
       del.onclick=()=>{st.tasks.splice(st.tasks.indexOf(t),1);render();};
 
-      row.append(grip,dot,name,dates,del);taskList.appendChild(row);
+      row.append(grip,chk,dot,name,owner,dates,del);taskList.appendChild(row);
     });
     stage.appendChild(taskList);
 
@@ -464,26 +575,32 @@ function renderGantt(L){
   if(tc>=0&&tc<L.total){const tl2=document.createElement("div");tl2.className="today-line";tl2.style.left=(tc*COLW+COLW/2)+"px";grid.appendChild(tl2);}
 
   data.stages.forEach((st)=>{
-    const cv=cssVar(st.color);
+    const cv=colorOf(st);
     const sep=document.createElement("div");sep.className="stagebar-sep";grid.appendChild(sep);
     st.tasks.forEach((t)=>{
       const br=document.createElement("div");br.className="barrow";
       const s=pd(t.start),e=pd(t.end||t.start);
       const sc=colIndex(L.min,s),ec=colIndex(L.min,e),span=ec-sc+1;
       if(t.kind==="milestone"){
-        const dm=document.createElement("div");dm.className="milestone";
-        dm.style.background=cv;dm.style.left=(sc*COLW+COLW/2-9)+"px";dm.title=t.name+" · "+fmtLong(s);grid.appendChild(br);
+        const dm=document.createElement("div");dm.className="milestone"+(t.done?" done":"");
+        dm.style.background=cv;dm.style.left=(sc*COLW+COLW/2-9)+"px";
+        dm.title=t.name+" · "+fmtLong(s)+" · לחיצה: בוצע/לא בוצע";
+        dm.onclick=()=>{t.done=!t.done;render();};
         br.appendChild(dm);
-        const lb=document.createElement("div");lb.className="ms-label";lb.style.left=(sc*COLW+COLW)+"px";lb.textContent=t.name;br.appendChild(lb);
-        barLabels.set(t,lb);
+        const lb=document.createElement("div");lb.className="ms-label"+(t.done?" done":"");
+        lb.style.left=(sc*COLW+COLW)+"px";lb.textContent=(t.done?"✓ ":"")+t.name;br.appendChild(lb);
+        barLabels.set(t,lb);barEls.set(t,dm);
       }else{
-        const bar=document.createElement("div");bar.className="bar"+(t.kind==="lead"?" lead":"");
+        const bar=document.createElement("div");
+        bar.className="bar"+(t.kind==="lead"?" lead":"")+(t.done?" done":"")+(isOverdue(t)?" overdue":"");
         bar.style.background=cv;bar.style.left=(sc*COLW)+"px";bar.style.width=(span*COLW-4)+"px";
-        bar.title=t.name+" · "+fmtLong(s)+(span>1?(" – "+fmtLong(e)):"")+(t.note?(" · "+t.note):"");
-        const lab=document.createElement("span");lab.textContent=t.name;
-        lab.className="bar-out";lab.style.left=((sc+span)*COLW+6)+"px";br.appendChild(lab);
-        barLabels.set(t,lab);
+        bar.title=t.name+(t.owner?" · "+t.owner:"")+" · "+fmtLong(s)+(span>1?(" – "+fmtLong(e)):"")
+          +(t.note?(" · "+t.note):"")+" · לחיצה: בוצע/לא בוצע · גרירה: שינוי תאריכים";
+        const lab=document.createElement("span");lab.textContent=(t.done?"✓ ":"")+t.name;
+        lab.className="bar-out"+(t.done?" done":"");lab.style.left=((sc+span)*COLW+6)+"px";br.appendChild(lab);
+        barLabels.set(t,lab);barEls.set(t,bar);
         if(t.kind==="lead"){const cap=document.createElement("div");cap.className="cap";bar.appendChild(cap);}
+        attachBarDrag(bar,t,L);
         br.appendChild(bar);
       }
       grid.appendChild(br);
@@ -519,6 +636,39 @@ document.getElementById("print").onclick=()=>window.print();
 document.getElementById("export").onclick=()=>{const b=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="תכנית-שיפוץ.json";a.click();URL.revokeObjectURL(a.href);};
 document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
 document.getElementById("importFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);render();}catch(err){alert("קובץ לא תקין");}};r.readAsText(f);};
+
+/* drag a bar to move it; drag an edge to resize; a plain click toggles done */
+function attachBarDrag(bar,t,L){
+  let drag=null;
+  bar.addEventListener("pointerdown",e=>{
+    if(e.button!==0) return;
+    const r=bar.getBoundingClientRect();
+    const rel=e.clientX-r.left;
+    const mode=r.width>30?(rel<10?"start":(rel>r.width-10?"end":"move")):"move";
+    drag={x0:e.clientX,mode,moved:false,s:pd(t.start),e:pd(t.end||t.start)};
+    try{bar.setPointerCapture(e.pointerId);}catch(_){}
+    e.preventDefault();
+  });
+  bar.addEventListener("pointermove",e=>{
+    if(!drag) return;
+    const dc=Math.round((e.clientX-drag.x0)/COLW);
+    if(dc!==0) drag.moved=true;
+    if(!drag.moved) return;
+    let s=new Date(drag.s),en=new Date(drag.e);
+    if(drag.mode==="move"){s=addDays(s,dc);en=addDays(en,dc);}
+    else if(drag.mode==="start"){s=addDays(s,dc);if(s>en)s=en;}
+    else{en=addDays(en,dc);if(en<s)en=s;}
+    t.start=iso(s);t.end=iso(en);
+    const nsc=colIndex(L.min,s),nspan=colIndex(s,en)+1;
+    bar.style.left=(nsc*COLW)+"px";bar.style.width=(nspan*COLW-4)+"px";
+  });
+  bar.addEventListener("pointerup",()=>{
+    if(!drag) return;
+    const moved=drag.moved;drag=null;
+    if(moved){render();}
+    else{t.done=!t.done;render();}
+  });
+}
 
 /* focus the view on today's column (clamped to the plan range) */
 function focusToday(){

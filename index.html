@@ -111,15 +111,17 @@
   .stagebar-sep{height:var(--stageh);position:relative}
   .stagebar-sep::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--line)}
   .barrow{height:var(--rowh);position:relative}
-  .bar{position:absolute;top:8px;height:24px;border-radius:6px;display:flex;align-items:center;
-    padding:0 8px;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;
+  .bar{position:absolute;top:7px;height:26px;border-radius:6px;display:flex;align-items:center;
+    padding:0 8px;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;
     box-shadow:0 1px 2px rgba(0,0,0,.18);user-select:none}
+  .bar-out{position:absolute;top:7px;height:26px;display:flex;align-items:center;
+    font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;pointer-events:none}
   .bar.lead{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0) 0 7px,rgba(255,255,255,.22) 7px 14px);opacity:.96}
   .bar .cap{position:absolute;top:0;left:auto;right:0;width:var(--col);height:100%;
     background:rgba(0,0,0,.18);border-radius:0 6px 6px 0}
   .milestone{position:absolute;top:9px;width:18px;height:18px;transform:rotate(45deg);
     border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);border-radius:3px}
-  .ms-label{position:absolute;top:11px;font-size:11px;font-weight:700;color:var(--ink);white-space:nowrap}
+  .ms-label{position:absolute;top:10px;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap}
 
   .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:18px;font-size:13px;color:var(--ink-soft)}
   .legend .item{display:flex;align-items:center;gap:7px}
@@ -296,6 +298,8 @@ function computeLayout(){
 
 function cssVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 const COLW=parseFloat(cssVar("--col"))||52;
+const _mctx=document.createElement("canvas").getContext("2d");
+function labelFits(name,span){_mctx.font="600 13px Assistant,sans-serif";return _mctx.measureText(name).width<=span*COLW-20;}
 function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
 const barLabels=new Map();
@@ -476,7 +480,9 @@ function renderGantt(L){
         const bar=document.createElement("div");bar.className="bar"+(t.kind==="lead"?" lead":"");
         bar.style.background=cv;bar.style.left=(sc*COLW)+"px";bar.style.width=(span*COLW-4)+"px";
         bar.title=t.name+" · "+fmtLong(s)+(span>1?(" – "+fmtLong(e)):"")+(t.note?(" · "+t.note):"");
-        const lab=document.createElement("span");lab.textContent=t.name;bar.appendChild(lab);
+        const lab=document.createElement("span");lab.textContent=t.name;
+        if(labelFits(t.name,span)){bar.appendChild(lab);}
+        else{lab.className="bar-out";lab.style.left=((sc+span)*COLW+6)+"px";br.appendChild(lab);}
         barLabels.set(t,lab);
         if(t.kind==="lead"){const cap=document.createElement("div");cap.className="cap";bar.appendChild(cap);}
         br.appendChild(bar);

@@ -298,8 +298,6 @@ function computeLayout(){
 
 function cssVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 const COLW=parseFloat(cssVar("--col"))||52;
-const _mctx=document.createElement("canvas").getContext("2d");
-function labelFits(name,span){_mctx.font="600 13px Assistant,sans-serif";return _mctx.measureText(name).width<=span*COLW-20;}
 function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
 const barLabels=new Map();
@@ -481,8 +479,7 @@ function renderGantt(L){
         bar.style.background=cv;bar.style.left=(sc*COLW)+"px";bar.style.width=(span*COLW-4)+"px";
         bar.title=t.name+" · "+fmtLong(s)+(span>1?(" – "+fmtLong(e)):"")+(t.note?(" · "+t.note):"");
         const lab=document.createElement("span");lab.textContent=t.name;
-        if(labelFits(t.name,span)){bar.appendChild(lab);}
-        else{lab.className="bar-out";lab.style.left=((sc+span)*COLW+6)+"px";br.appendChild(lab);}
+        lab.className="bar-out";lab.style.left=((sc+span)*COLW+6)+"px";br.appendChild(lab);
         barLabels.set(t,lab);
         if(t.kind==="lead"){const cap=document.createElement("div");cap.className="cap";bar.appendChild(cap);}
         br.appendChild(bar);

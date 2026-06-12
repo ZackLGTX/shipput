@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>תכנית עבודה — שיפוץ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Assistant:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F4EE; --panel:#FFFFFF; --ink:#22272E; --ink-soft:#5A626C;
+    --line:#E4DFD4; --line-strong:#D2CBBC; --weekend:#EDE8DC; --today:#C2502E;
+    --s1:#C2502E; --s2:#2F6F6A; --s3:#B8862F; --s4:#4B5D8A; --s5:#7A6A99; --s6:#5E7A3A;
+    --lead:#6B6256;
+    --col:38px; --rowh:40px; --stageh:42px; --addh:40px; --headh:58px;
+    --panelw:330px; --radius:7px;
+    --shadow:0 1px 2px rgba(34,39,46,.06), 0 8px 24px rgba(34,39,46,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:"Assistant",system-ui,sans-serif;
+    font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1320px;margin:0 auto;padding:28px 22px 64px}
+
+  header{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px 28px;margin-bottom:8px}
+  .title-block h1{font-family:"Frank Ruhl Libre",serif;font-weight:900;
+    font-size:clamp(28px,4vw,40px);letter-spacing:-.01em;margin:0}
+  .title-block .sub{color:var(--ink-soft);font-size:14px;margin-top:2px}
+  .spacer{flex:1}
+  .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+  button{font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+    border:1px solid var(--line-strong);background:var(--panel);color:var(--ink);
+    border-radius:var(--radius);padding:8px 13px;transition:background .15s}
+  button:hover{background:#F0ECE2}
+  button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+  button.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  button.primary:hover{background:#000}
+
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 18px}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;
+    padding:6px 14px;font-size:13px;color:var(--ink-soft);box-shadow:var(--shadow)}
+  .chip b{color:var(--ink);font-weight:700}
+
+  .frame{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    box-shadow:var(--shadow);overflow:hidden}
+  .gantt{display:flex;align-items:stretch;overflow-x:auto;direction:rtl}
+
+  .tasks{flex:0 0 var(--panelw);position:sticky;right:0;z-index:5;background:var(--panel);
+    border-inline-start:2px solid var(--line-strong)}
+  .tasks .head{height:var(--headh);display:flex;align-items:center;padding:0 16px;font-weight:700;
+    border-bottom:1px solid var(--line);color:var(--ink-soft);font-size:13px}
+
+  .stage{border-bottom:1px solid var(--line)}
+  .stage-row{height:var(--stageh);display:flex;align-items:center;gap:9px;padding:0 14px;
+    background:linear-gradient(90deg,transparent,rgba(0,0,0,.012))}
+  .swatch{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+  .stage-name{font-family:"Frank Ruhl Libre",serif;font-weight:700;font-size:16px;
+    border:none;background:transparent;color:var(--ink);width:100%;padding:2px 0}
+  .stage-name:focus{outline:none;background:#F4F1E8;border-radius:4px;padding:2px 6px}
+  .stage-meta{font-size:11px;color:var(--ink-soft);white-space:nowrap}
+
+  .task{display:flex;align-items:center;gap:5px;height:var(--rowh);padding:0 14px 0 8px}
+  .task:hover{background:#FAF8F2}
+  .task-list{position:relative}
+  .grip{flex:0 0 auto;cursor:grab;color:#cfc9bc;font-size:13px;padding:0 1px;line-height:1;
+    touch-action:none;user-select:none}
+  .grip:hover{color:var(--ink-soft)}
+  .task.dragging{background:#F0ECE2;opacity:.95;box-shadow:0 6px 16px rgba(0,0,0,.14);
+    border-radius:6px;position:relative;z-index:8;cursor:grabbing}
+  .seglabel{font-size:13px;color:var(--ink-soft);font-weight:600;align-self:center}
+  .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:var(--radius);overflow:hidden}
+  .seg button{border:none;border-radius:0;background:var(--panel);padding:8px 12px;font-size:13px;font-weight:600}
+  .seg button+button{border-inline-start:1px solid var(--line-strong)}
+  .seg button.active{background:var(--ink);color:#fff}
+  .seg button:hover:not(.active){background:#F0ECE2}
+  .tname{flex:1;border:none;background:transparent;font-family:inherit;font-size:13.5px;
+    color:var(--ink);padding:4px 4px;border-radius:4px;min-width:0}
+  .tname:focus{outline:none;background:#F1EEE5}
+  .dot{flex:0 0 auto;font-size:11px;line-height:1}
+  .dates{display:flex;align-items:center;gap:2px;flex:0 0 auto;color:var(--ink-soft);font-size:11px}
+  .dinput{width:38px;border:1px solid transparent;background:#F4F1E8;border-radius:5px;
+    font-family:inherit;font-size:11px;text-align:center;color:var(--ink);padding:3px 2px}
+  .dinput:focus{outline:none;border-color:var(--line-strong);background:#fff}
+  .info{cursor:help;color:var(--lead);font-weight:700;font-size:12px}
+  .qmark{color:var(--today);font-weight:700;cursor:help}
+  .del{border:none;background:none;color:#c2bcae;font-size:16px;padding:0 2px;cursor:pointer;flex:0 0 auto}
+  .del:hover{color:var(--today)}
+  .add-wrap{height:var(--addh);display:flex;align-items:center;padding:0 14px}
+  .add-task{font-size:12.5px;padding:5px 10px;font-weight:600;border-style:dashed;color:var(--ink-soft)}
+
+  .timeline{flex:1 1 auto;min-width:0;direction:ltr;position:relative}
+  .tl-head{display:flex;flex-direction:column;height:var(--headh);border-bottom:1px solid var(--line)}
+  .months{display:flex;height:26px}
+  .month{font-size:12px;font-weight:700;color:var(--ink-soft);display:flex;align-items:center;
+    padding-inline-start:8px;border-inline-end:1px solid var(--line);white-space:nowrap}
+  .days{display:flex;height:32px}
+  .day{width:var(--col);flex:0 0 var(--col);display:flex;flex-direction:column;align-items:center;
+    justify-content:center;border-inline-end:1px solid var(--line);font-size:11px;color:var(--ink-soft)}
+  .day .dnum{font-weight:700;color:var(--ink);font-size:12px}
+  .day.weekend{background:var(--weekend)} .day.weekend .dnum{color:var(--ink-soft)}
+
+  .grid{position:relative}
+  .gridbg{position:absolute;inset:0;display:flex;pointer-events:none}
+  .gcell{width:var(--col);flex:0 0 var(--col);border-inline-end:1px solid var(--line)}
+  .gcell.weekend{background:var(--weekend)}
+  .today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--today);z-index:6;pointer-events:none}
+  .today-line::after{content:"היום";position:absolute;top:2px;left:4px;font-size:10px;color:#fff;
+    background:var(--today);padding:1px 5px;border-radius:4px;font-weight:700;white-space:nowrap}
+
+  .stagebar-sep{height:var(--stageh);position:relative}
+  .stagebar-sep::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--line)}
+  .barrow{height:var(--rowh);position:relative}
+  .bar{position:absolute;top:8px;height:24px;border-radius:6px;display:flex;align-items:center;
+    padding:0 8px;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;
+    box-shadow:0 1px 2px rgba(0,0,0,.18);user-select:none}
+  .bar.lead{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0) 0 7px,rgba(255,255,255,.22) 7px 14px);opacity:.96}
+  .bar .cap{position:absolute;top:0;left:auto;right:0;width:var(--col);height:100%;
+    background:rgba(0,0,0,.18);border-radius:0 6px 6px 0}
+  .milestone{position:absolute;top:9px;width:18px;height:18px;transform:rotate(45deg);
+    border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);border-radius:3px}
+  .ms-label{position:absolute;top:11px;font-size:11px;font-weight:700;color:var(--ink);white-space:nowrap}
+
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:18px;font-size:13px;color:var(--ink-soft)}
+  .legend .item{display:flex;align-items:center;gap:7px}
+  .legend .sw{width:13px;height:13px;border-radius:3px}
+  .legend .dm{width:13px;height:13px;transform:rotate(45deg);border:2px solid #fff;border-radius:2px;background:var(--ink-soft)}
+  .legend .lh{width:18px;height:13px;border-radius:3px;background:var(--lead);
+    background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0) 0 4px,rgba(255,255,255,.3) 4px 8px)}
+
+  /* open items */
+  .open{margin-top:26px;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    box-shadow:var(--shadow);padding:18px 20px}
+  .open h2{font-family:"Frank Ruhl Libre",serif;font-size:20px;margin:0 0 4px}
+  .open .lead-sub{color:var(--ink-soft);font-size:13px;margin-bottom:12px}
+  .oi{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
+  .oi input[type=checkbox]{width:17px;height:17px;accent-color:var(--s4);flex:0 0 auto}
+  .oi .oit{flex:1;border:none;background:transparent;font-family:inherit;font-size:14px;color:var(--ink);padding:4px}
+  .oi .oit:focus{outline:none;background:#F1EEE5;border-radius:4px}
+  .oi.done .oit{text-decoration:line-through;color:var(--ink-soft)}
+  .open .add-task{margin-top:10px}
+
+  footer{margin-top:26px;text-align:center;color:#aaa39a;font-size:12px}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media print{
+    body{background:#fff}
+    .actions,.add-task,.del,.dinput,.grip,.oi input[type=checkbox]{display:none!important}
+    .frame{box-shadow:none;border-color:#bbb}.gantt{overflow:visible}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title-block">
+      <h1>תכנית עבודה — שיפוץ</h1>
+      <div class="sub">לוח זמנים לפי שבועות · כולל מדידות וזמני אספקה</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <span class="seglabel">מיון:</span>
+      <div class="seg" id="sortSeg">
+        <button data-mode="date">לפי תאריך</button>
+        <button data-mode="manual">ידני</button>
+      </div>
+      <button id="addStage">+ שלב</button>
+      <button id="export">ייצוא</button>
+      <button id="importBtn">ייבוא</button>
+      <input type="file" id="importFile" accept="application/json" hidden>
+      <button class="primary" id="print">הדפסה / PDF</button>
+    </div>
+  </header>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="frame"><div class="gantt" id="gantt"></div></div>
+
+  <div class="legend" id="legend"></div>
+
+  <section class="open">
+    <h2>פתוח / להזמין</h2>
+    <div class="lead-sub">פריטים שעדיין לא משובצים בלוח — לעקוב ולתאם מול הקבלן והספקים.</div>
+    <div id="openList"></div>
+    <button class="add-task" id="addOpen">+ פריט</button>
+  </section>
+
+  <footer>תאריכים בפורמט יום.חודש · נשמר אוטומטית בדפדפן זה · לשיתוף השתמשו ב"ייצוא"</footer>
+</div>
+
+<script>
+"use strict";
+const SC = ["--s1","--s2","--s3","--s4","--s5","--s6"];
+
+const DEFAULT_DATA = {
+  version:4,
+  sortMode:"date",
+  stages:[
+    { name:"שבוע 1", color:"--s1", tasks:[
+      {name:"פגישה עם איש החלונות", start:"2026-06-14", end:"2026-06-14", kind:"milestone"},
+      {name:"פירוק מזגנים", start:"2026-06-14", end:"2026-06-14"},
+      {name:"פירוק והריסות", start:"2026-06-15", end:"2026-06-16"},
+      {name:"סימון מיקומי קירות וחלונות + תחילת בנייה", start:"2026-06-17", end:"2026-06-17"},
+      {name:"בנייה", start:"2026-06-18", end:"2026-06-19"},
+    ]},
+    { name:"שבוע 2", color:"--s2", tasks:[
+      {name:"בנייה ואיש גבס", start:"2026-06-21", end:"2026-06-22"},
+      {name:"מדידות: דלת כניסה, מטבח, חלונות", start:"2026-06-22", end:"2026-06-22", kind:"milestone"},
+      {name:"סימון ותכנון חשמל ואינסטלציה + תחילת עבודות", start:"2026-06-23", end:"2026-06-23"},
+      {name:"עבודות אינסטלציה וחשמל", start:"2026-06-24", end:"2026-06-26"},
+    ]},
+    { name:"שבוע 3", color:"--s3", tasks:[
+      {name:"איטומים, קרמיקה וריצוף", start:"2026-06-28", end:"2026-07-02"},
+      {name:"מדידות: ארונות אמבטיה, מקלחון, דלת הזזה", start:"2026-07-01", end:"2026-07-01", kind:"milestone"},
+      {name:"רובה במקלחות", start:"2026-07-03", end:"2026-07-03"},
+    ]},
+    { name:"שבוע 4", color:"--s4", tasks:[
+      {name:"צבע — כל הבית מבפנים", start:"2026-07-05", end:"2026-07-08"},
+      {name:"כלים סניטריים + תאורה, שקעים, מתגים ולוח חשמל", start:"2026-07-09", end:"2026-07-10"},
+    ]},
+    { name:"שבוע 5", color:"--s5", tasks:[
+      {name:"כלים סניטריים + תאורה/חשמל (המשך)", start:"2026-07-12", end:"2026-07-14"},
+      {name:"צביעה בחוץ, העברת צינורות, תעלות", start:"2026-07-15", end:"2026-07-17"},
+    ]},
+    { name:"שבוע 6", color:"--s6", tasks:[
+      {name:"צביעה בחוץ, צינורות, תעלות (המשך)", start:"2026-07-19", end:"2026-07-20"},
+      {name:"פינישים וסגירות", start:"2026-07-21", end:"2026-07-24"},
+    ]},
+    { name:"הזמנות וזמני אספקה", color:"--lead", lead:true, tasks:[
+      {name:"חלונות — התקנה", start:"2026-06-22", end:"2026-07-13", kind:"lead", note:"21 יום ממדידת 22.6"},
+      {name:"משקוף דלת כניסה — מוכן", start:"2026-06-22", end:"2026-07-20", kind:"lead", note:"כ־20 ימי עסקים ממדידת 22.6"},
+      {name:"פרקט — התקנה", start:"2026-06-22", end:"2026-07-22", kind:"lead", note:"חודש ממדידת המטבח (22.6)"},
+      {name:"דלת כניסה — התקנה", start:"2026-06-22", end:"2026-08-03", kind:"lead", note:"כ־30 ימי עסקים ממדידה; מותקנת אחרי הפרקט"},
+      {name:"מטבח — התקנה", start:"2026-06-22", end:"2026-08-03", kind:"lead", note:"כ־30 ימי עסקים ממדידת 22.6"},
+      {name:"ארונות אמבטיה — התקנה", start:"2026-07-01", end:"2026-08-12", kind:"lead", note:"כ־30 ימי עסקים ממדידת 1.7"},
+    ]},
+  ],
+  openItems:[
+    {text:"שיש למטבח — הזמנה, מדידה אחרי התקנת המטבח, ואז התקנה", done:false},
+    {text:"הזמנת דלת ממ\"ד חדשה", done:false},
+    {text:"קרמיקה למטבח — להזמין ולהתקין (לברר מול הקבלן)", done:false},
+  ]
+};
+
+const STORE_KEY="renovation_gantt_v4";
+let data=load();
+function load(){ try{const r=localStorage.getItem(STORE_KEY); if(r){const d=JSON.parse(r); if(d.version===4) return d;}}catch(e){} return structuredClone(DEFAULT_DATA); }
+function save(){ try{localStorage.setItem(STORE_KEY,JSON.stringify(data));}catch(e){} }
+
+/* dates */
+const DAY_HE=["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"];
+function pd(s){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);}
+function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function isRest(d){return d.getDay()===6;}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function colIndex(a,b){const s=new Date(a);s.setHours(0,0,0,0);const e=new Date(b);e.setHours(0,0,0,0);return Math.round((e-s)/864e5);}
+function fmtHeb(d){return d.getDate()+"."+(d.getMonth()+1)+(d.getFullYear()!==2026?"."+d.getFullYear():"");}
+function fmtLong(d){return d.toLocaleDateString("he-IL",{day:"numeric",month:"long",year:"numeric"});}
+function parseHeb(s,fallbackYear){
+  s=(s||"").trim().replace(/[\/\-]/g,"."); const p=s.split(".").filter(x=>x!=="");
+  if(p.length<2) return null;
+  let d=+p[0],m=+p[1],y=p[2]!==undefined?(+p[2]<100?2000+ +p[2]:+p[2]):(fallbackYear||2026);
+  if(!d||!m) return null; return new Date(y,m-1,d);
+}
+
+function allTasks(){const out=[];data.stages.forEach((st,si)=>st.tasks.forEach((t,ti)=>out.push({st,si,t,ti})));return out;}
+
+function computeLayout(){
+  const ts=allTasks(); 
+  let min=null,max=null;
+  ts.forEach(({t})=>{const s=pd(t.start),e=pd(t.end||t.start);if(!min||s<min)min=s;if(!max||e>max)max=e;});
+  if(!min){min=new Date(2026,5,14);max=new Date(2026,5,14);}
+  min=addDays(min,0); const total=colIndex(min,max)+2;
+  return {min,max,total};
+}
+
+const COLW=38;
+function cssVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+const barLabels=new Map();
+function sortStages(){
+  data.stages.forEach(st=>{
+    st.tasks.sort((a,b)=>{
+      const ds=pd(a.start)-pd(b.start); if(ds) return ds;
+      return pd(a.end||a.start)-pd(b.end||b.start);
+    });
+  });
+}
+
+function render(){
+  if(data.sortMode!=="manual") sortStages();
+  const L=computeLayout();
+  renderChips(L); renderLegend(); renderGantt(L); renderOpen(); renderSortToggle();
+  save();
+}
+
+/* drag-to-reorder rows within a stage */
+let rowDrag=null;
+function startRowDrag(e,row,taskList){
+  e.preventDefault();
+  rowDrag={row,taskList};
+  row.classList.add("dragging");
+  try{row.setPointerCapture(e.pointerId);}catch(_){}
+  window.addEventListener("pointermove",rowDragMove);
+  window.addEventListener("pointerup",rowDragEnd);
+}
+function rowDragMove(e){
+  if(!rowDrag) return;
+  const {row,taskList}=rowDrag;
+  const sibs=[...taskList.children].filter(c=>c!==row);
+  let target=null;
+  for(const s of sibs){
+    const r=s.getBoundingClientRect();
+    if(e.clientY < r.top + r.height/2){ target=s; break; }
+  }
+  if(target) taskList.insertBefore(row,target); else taskList.appendChild(row);
+}
+function rowDragEnd(){
+  if(!rowDrag) return;
+  const {row,taskList}=rowDrag;
+  row.classList.remove("dragging");
+  window.removeEventListener("pointermove",rowDragMove);
+  window.removeEventListener("pointerup",rowDragEnd);
+  const si=taskList._si;
+  data.stages[si].tasks=[...taskList.children].map(c=>c._task);
+  data.sortMode="manual";
+  rowDrag=null;
+  render();
+}
+
+function renderSortToggle(){
+  document.querySelectorAll("#sortSeg button").forEach(b=>{
+    b.classList.toggle("active", b.dataset.mode===(data.sortMode==="manual"?"manual":"date"));
+  });
+}
+
+function renderChips(L){
+  const c=document.getElementById("chips");c.innerHTML="";
+  const nWork=data.stages.filter(s=>!s.lead).reduce((a,s)=>a+s.tasks.length,0);
+  const items=[["שבועות",data.stages.filter(s=>!s.lead).length],["משימות",nWork],
+    ["התחלה",fmtLong(L.min)],["סיום (כולל אספקות)",fmtLong(L.max)]];
+  items.forEach(([k,v])=>{const e=document.createElement("div");e.className="chip";e.innerHTML=k+": <b>"+v+"</b>";c.appendChild(e);});
+}
+
+function renderLegend(){
+  const l=document.getElementById("legend");l.innerHTML="";
+  data.stages.forEach(st=>{
+    const it=document.createElement("div");it.className="item";
+    it.innerHTML='<span class="sw" style="background:'+cssVar(st.color)+'"></span>'+esc(st.name);
+    l.appendChild(it);
+  });
+  const m=document.createElement("div");m.className="item";m.innerHTML='<span class="dm"></span>מדידה / אבן דרך';l.appendChild(m);
+  const ld=document.createElement("div");ld.className="item";ld.innerHTML='<span class="lh"></span>זמן אספקה (המתנה)';l.appendChild(ld);
+}
+
+function renderGantt(L){
+  const g=document.getElementById("gantt");g.innerHTML="";
+  barLabels.clear();
+  const widthPx=L.total*COLW;
+
+  /* panel */
+  const tasks=document.createElement("div");tasks.className="tasks";
+  const head=document.createElement("div");head.className="head";head.textContent="משימה";tasks.appendChild(head);
+
+  data.stages.forEach((st,si)=>{
+    const stage=document.createElement("div");stage.className="stage";
+    const cv=cssVar(st.color);
+    const srow=document.createElement("div");srow.className="stage-row";
+    const sw=document.createElement("span");sw.className="swatch";sw.style.background=cv;
+    const sname=document.createElement("input");sname.className="stage-name";sname.value=st.name;
+    sname.oninput=()=>{st.name=sname.value;renderLegend();save();};
+    const smeta=document.createElement("span");smeta.className="stage-meta";smeta.textContent=st.tasks.length+" משימות";
+    srow.append(sw,sname,smeta);stage.appendChild(srow);
+
+    const taskList=document.createElement("div");taskList.className="task-list";taskList._si=si;
+
+    st.tasks.forEach((t,ti)=>{
+      const row=document.createElement("div");row.className="task";row._task=t;
+      const grip=document.createElement("span");grip.className="grip";grip.textContent="⠿";grip.title="גרירה לסידור";
+      grip.addEventListener("pointerdown",e=>startRowDrag(e,row,taskList));
+      const dot=document.createElement("span");dot.className="dot";
+      dot.style.color=cv; dot.textContent = t.kind==="milestone"?"◆":(t.kind==="lead"?"▦":"▮");
+      const name=document.createElement("input");name.className="tname";name.value=t.name;
+      name.oninput=()=>{t.name=name.value;const lb=barLabels.get(t);if(lb)lb.textContent=name.value;save();};
+
+      const dates=document.createElement("div");dates.className="dates";
+      const ds=document.createElement("input");ds.className="dinput";ds.value=fmtHeb(pd(t.start));
+      ds.onblur=()=>{const d=parseHeb(ds.value);if(d){t.start=iso(d);if(t.kind==="milestone")t.end=iso(d);if(pd(t.end)<d)t.end=iso(d);}render();};
+      ds.onkeydown=e=>{if(e.key==="Enter")ds.blur();};
+      dates.appendChild(ds);
+      if(t.kind!=="milestone"){
+        const sep=document.createElement("span");sep.textContent="–";dates.appendChild(sep);
+        const de=document.createElement("input");de.className="dinput";de.value=fmtHeb(pd(t.end||t.start));
+        de.onblur=()=>{const d=parseHeb(de.value);if(d){t.end=iso(d);if(pd(t.start)>d)t.start=iso(d);}render();};
+        de.onkeydown=e=>{if(e.key==="Enter")de.blur();};
+        dates.appendChild(de);
+      }
+      if(t.note){const inf=document.createElement("span");inf.className="info";inf.textContent="ⓘ";inf.title=t.note;dates.appendChild(inf);}
+
+      const del=document.createElement("button");del.className="del";del.textContent="×";del.title="מחיקה";
+      del.onclick=()=>{st.tasks.splice(st.tasks.indexOf(t),1);render();};
+
+      row.append(grip,dot,name,dates,del);taskList.appendChild(row);
+    });
+    stage.appendChild(taskList);
+
+    const aw=document.createElement("div");aw.className="add-wrap";
+    const add=document.createElement("button");add.className="add-task";add.textContent="+ משימה";
+    const baseStart = st.tasks.length?st.tasks[st.tasks.length-1].end:iso(L.min);
+    add.onclick=()=>{st.tasks.push({name:"משימה חדשה",start:baseStart,end:baseStart});render();};
+    aw.appendChild(add);stage.appendChild(aw);
+    tasks.appendChild(stage);
+  });
+  g.appendChild(tasks);
+
+  /* timeline */
+  const tl=document.createElement("div");tl.className="timeline";
+  const tlHead=document.createElement("div");tlHead.className="tl-head";tlHead.style.width=widthPx+"px";
+  const months=document.createElement("div");months.className="months";
+  const days=document.createElement("div");days.className="days";
+  let monStart=0,curMon=null;const dates=[];
+  for(let c=0;c<L.total;c++){
+    const d=addDays(L.min,c);dates.push(d);
+    const de=document.createElement("div");de.className="day"+(isRest(d)?" weekend":"");
+    de.innerHTML='<span class="dnum">'+d.getDate()+'</span><span>'+DAY_HE[d.getDay()]+'</span>';days.appendChild(de);
+    const lab=d.toLocaleDateString("he-IL",{month:"long",year:"numeric"});
+    if(curMon===null){curMon=lab;monStart=c;}
+    else if(lab!==curMon){addMonth(months,curMon,(c-monStart)*COLW);curMon=lab;monStart=c;}
+  }
+  addMonth(months,curMon,(L.total-monStart)*COLW);
+  tlHead.append(months,days);tl.appendChild(tlHead);
+
+  const grid=document.createElement("div");grid.className="grid";grid.style.width=widthPx+"px";
+  const bg=document.createElement("div");bg.className="gridbg";
+  for(let c=0;c<L.total;c++){const cell=document.createElement("div");cell.className="gcell"+(isRest(dates[c])?" weekend":"");bg.appendChild(cell);}
+  grid.appendChild(bg);
+
+  const today=new Date();today.setHours(0,0,0,0);const tc=colIndex(L.min,today);
+  if(tc>=0&&tc<L.total){const tl2=document.createElement("div");tl2.className="today-line";tl2.style.left=(tc*COLW+COLW/2)+"px";grid.appendChild(tl2);}
+
+  data.stages.forEach((st)=>{
+    const cv=cssVar(st.color);
+    const sep=document.createElement("div");sep.className="stagebar-sep";grid.appendChild(sep);
+    st.tasks.forEach((t)=>{
+      const br=document.createElement("div");br.className="barrow";
+      const s=pd(t.start),e=pd(t.end||t.start);
+      const sc=colIndex(L.min,s),ec=colIndex(L.min,e),span=ec-sc+1;
+      if(t.kind==="milestone"){
+        const dm=document.createElement("div");dm.className="milestone";
+        dm.style.background=cv;dm.style.left=(sc*COLW+COLW/2-9)+"px";dm.title=t.name+" · "+fmtLong(s);grid.appendChild(br);
+        br.appendChild(dm);
+        const lb=document.createElement("div");lb.className="ms-label";lb.style.left=(sc*COLW+COLW)+"px";lb.textContent=t.name;br.appendChild(lb);
+        barLabels.set(t,lb);
+      }else{
+        const bar=document.createElement("div");bar.className="bar"+(t.kind==="lead"?" lead":"");
+        bar.style.background=cv;bar.style.left=(sc*COLW)+"px";bar.style.width=(span*COLW-4)+"px";
+        bar.title=t.name+" · "+fmtLong(s)+(span>1?(" – "+fmtLong(e)):"")+(t.note?(" · "+t.note):"");
+        const lab=document.createElement("span");lab.textContent=t.name;bar.appendChild(lab);
+        barLabels.set(t,lab);
+        if(t.kind==="lead"){const cap=document.createElement("div");cap.className="cap";bar.appendChild(cap);}
+        br.appendChild(bar);
+      }
+      grid.appendChild(br);
+    });
+    const addsp=document.createElement("div");addsp.style.height="var(--addh)";grid.appendChild(addsp);
+  });
+  tl.appendChild(grid);g.appendChild(tl);
+}
+function addMonth(c,l,w){const m=document.createElement("div");m.className="month";m.style.width=w+"px";m.textContent=l;c.appendChild(m);}
+
+function renderOpen(){
+  const list=document.getElementById("openList");list.innerHTML="";
+  (data.openItems||[]).forEach((it,i)=>{
+    const row=document.createElement("div");row.className="oi"+(it.done?" done":"");
+    const cb=document.createElement("input");cb.type="checkbox";cb.checked=!!it.done;
+    cb.onchange=()=>{it.done=cb.checked;render();};
+    const tx=document.createElement("input");tx.className="oit";tx.value=it.text;
+    tx.oninput=()=>{it.text=tx.value;save();};
+    const del=document.createElement("button");del.className="del";del.textContent="×";
+    del.onclick=()=>{data.openItems.splice(i,1);render();};
+    row.append(cb,tx,del);list.appendChild(row);
+  });
+}
+
+/* controls */
+document.getElementById("sortSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-mode]");if(!b)return;
+  data.sortMode=b.dataset.mode; render();
+});
+document.getElementById("addStage").onclick=()=>{const i=data.stages.filter(s=>!s.lead).length;data.stages.push({name:"שבוע "+(i+1),color:SC[i%SC.length],tasks:[]});render();};
+document.getElementById("addOpen").onclick=()=>{(data.openItems=data.openItems||[]).push({text:"",done:false});render();};
+document.getElementById("print").onclick=()=>window.print();
+document.getElementById("export").onclick=()=>{const b=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="תכנית-שיפוץ.json";a.click();URL.revokeObjectURL(a.href);};
+document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
+document.getElementById("importFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);render();}catch(err){alert("קובץ לא תקין");}};r.readAsText(f);};
+
+render();
+</script>
+</body>
+</html>

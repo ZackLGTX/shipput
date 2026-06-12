@@ -243,9 +243,29 @@ const DEFAULT_DATA = {
 };
 
 const STORE_KEY="renovation_gantt_v4";
+const SB_URL="https://jqbisuwpqtphzpjvrskc.supabase.co/rest/v1/gantt?id=eq.1";
+const SB_KEY="sb_publishable_S-kajXKRNRs1KV1ZRuoXgg_HUbclG9i";
+const SB_HEADERS={apikey:SB_KEY,Authorization:"Bearer "+SB_KEY,"Content-Type":"application/json"};
 let data=load();
 function load(){ try{const r=localStorage.getItem(STORE_KEY); if(r){const d=JSON.parse(r); if(d.version===4) return d;}}catch(e){} return structuredClone(DEFAULT_DATA); }
-function save(){ try{localStorage.setItem(STORE_KEY,JSON.stringify(data));}catch(e){} }
+let syncTimer=null;
+function save(){
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(data));}catch(e){}
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>{
+    fetch(SB_URL,{method:"PATCH",headers:SB_HEADERS,
+      body:JSON.stringify({data:data,updated_at:new Date().toISOString()})})
+      .catch(err=>console.warn("sync failed",err));
+  },800);
+}
+(async function loadRemote(){
+  try{
+    const r=await fetch(SB_URL+"&select=data",{headers:SB_HEADERS});
+    const rows=await r.json();
+    const d=rows&&rows[0]&&rows[0].data;
+    if(d&&d.version===4){data=d;render();}
+  }catch(err){console.warn("remote load failed",err);}
+})();
 
 /* dates */
 const DAY_HE=["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"];
@@ -274,8 +294,8 @@ function computeLayout(){
   return {min,max,total};
 }
 
-const COLW=38;
 function cssVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+const COLW=parseFloat(cssVar("--col"))||52;
 function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
 const barLabels=new Map();

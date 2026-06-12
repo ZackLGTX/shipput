@@ -142,6 +142,18 @@
   @keyframes flashbar{50%{box-shadow:0 0 0 5px rgba(191,90,42,.5)}}
   .flash{animation:flashbar .8s ease 3}
 
+  /* dependency risk */
+  .bar.risk-amber,.milestone.risk-amber{box-shadow:0 0 0 2px #D9A441}
+  @keyframes riskpulse{50%{box-shadow:0 0 0 5px rgba(191,90,42,.35)}}
+  .bar.risk-red,.milestone.risk-red{box-shadow:0 0 0 2px var(--today);animation:riskpulse 1.4s infinite}
+  .bar.dep-risk,.milestone.dep-risk{outline:2px dashed var(--today);outline-offset:2px}
+  .dep{border:none;background:none;color:#c2bcae;cursor:pointer;font-size:13px;padding:0 1px;flex:0 0 auto}
+  .dep:hover{color:var(--ink-soft)}
+  .dep.linked{color:#B8860B}
+  .depsel{max-width:130px;font-size:11px;font-family:inherit;border:1px solid var(--line-strong);border-radius:5px;padding:2px}
+  .dash .di.warn{color:#B8860B;font-weight:700}
+  .endrisk{color:var(--today);font-weight:800;font-size:13px;margin-top:8px}
+
   /* dashboard */
   .dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:0 0 18px}
   .dash .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px 14px}
@@ -358,6 +370,36 @@ const barEls=new Map();
 function colorOf(st){return st.color&&st.color.startsWith("--")?cssVar(st.color):st.color;}
 function todayD(){const d=new Date();d.setHours(0,0,0,0);return d;}
 function isOverdue(t){return !t.done&&pd(t.end||t.start)<todayD();}
+
+/* dependencies: t.after = id of the task this one depends on */
+function ensureIds(){let seq=0;allTasks().forEach(({t})=>{if(!t.id)t.id="t"+Math.random().toString(36).slice(2,8)+(seq++);});}
+function inferDeps(){
+  if(data.depsInferred) return;
+  const ms=allTasks().map(x=>x.t).filter(t=>t.kind==="milestone");
+  allTasks().map(x=>x.t).forEach(t=>{
+    if(t.kind==="lead"&&!t.after){const m=ms.find(m=>m.start===t.start);if(m)t.after=m.id;}
+  });
+  data.depsInferred=true;
+}
+function taskById(id){let f=null;allTasks().forEach(({t})=>{if(t.id===id)f=t;});return f;}
+function dependentsOf(t){return allTasks().map(x=>x.t).filter(o=>o.after===t.id);}
+function daysToDeadline(t){return Math.round((pd(t.end||t.start)-todayD())/864e5);}
+const RISK_WINDOW=3;
+/* this task blocks others and its deadline is near/past */
+function upstreamRisk(t){
+  if(t.done||!dependentsOf(t).length) return null;
+  const d=daysToDeadline(t);
+  if(d<0) return "red";
+  if(d<=RISK_WINDOW) return "amber";
+  return null;
+}
+/* this task's predecessor already slipped */
+function downstreamRisk(t){
+  if(t.done||!t.after) return null;
+  const a=taskById(t.after);
+  if(!a||a.done) return null;
+  return daysToDeadline(a)<0?"red":null;
+}
 function sortStages(){
   data.stages.forEach(st=>{
     st.tasks.sort((a,b)=>{
@@ -368,6 +410,7 @@ function sortStages(){
 }
 
 function render(){
+  ensureIds();inferDeps();
   if(data.sortMode!=="manual") sortStages();
   const L=computeLayout();
   renderChips(L); renderLegend(); renderGantt(L); renderDash(); renderOpen(); renderSortToggle();
@@ -449,12 +492,41 @@ function renderDash(){
     if(items.length>6){const m=document.createElement("div");m.className="empty";m.textContent="+"+(items.length-6)+" נוספות";c.appendChild(m);}
     return c;
   }
+  /* dependency risks */
+  const risky=ts.filter(t=>upstreamRisk(t));
+  const riskCard=document.createElement("div");riskCard.className="card";
+  riskCard.innerHTML="<h3>סיכוני תלויות</h3>";
+  if(!risky.length){const e=document.createElement("div");e.className="empty";e.textContent="אין משימות קריטיות בסיכון";riskCard.appendChild(e);}
+  risky.forEach(t=>{
+    const lvl=upstreamRisk(t),d=daysToDeadline(t);
+    const deps=dependentsOf(t);
+    const di=document.createElement("div");di.className="di "+(lvl==="red"?"od":"warn");
+    const sw=document.createElement("span");sw.className="sw2";sw.style.background=lvl==="red"?cssVar("--today"):"#D9A441";
+    const nm=document.createElement("span");
+    nm.textContent=t.name+" ⟵ "+deps[0].name+(deps.length>1?" +"+(deps.length-1):"");
+    const dt=document.createElement("span");dt.className="dt";
+    dt.textContent=d<0?"באיחור "+(-d)+" ימים":(d===0?"היום!":"בעוד "+d+" ימים");
+    di.append(sw,nm,dt);
+    di.onclick=()=>focusTask(t);
+    riskCard.appendChild(di);
+  });
+  /* does a slipped chain reach the project end? */
+  let endAtRisk=false;
+  const L=computeLayout();
+  const reds=ts.filter(t=>upstreamRisk(t)==="red");
+  const seen=new Set();
+  const walk=t=>{if(seen.has(t.id))return;seen.add(t.id);
+    if(pd(t.end||t.start).getTime()===L.max.getTime())endAtRisk=true;
+    dependentsOf(t).forEach(walk);};
+  reds.forEach(walk);
   const prog=document.createElement("div");prog.className="card";
   prog.innerHTML='<h3>התקדמות</h3><div class="big">'+pct+'%</div>'+
     '<div class="progress-wrap"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
-    '<div class="empty" style="margin-top:6px">'+done+' מתוך '+ts.length+' משימות הושלמו</div>';
+    '<div class="empty" style="margin-top:6px">'+done+' מתוך '+ts.length+' משימות הושלמו</div>'+
+    (endAtRisk?'<div class="endrisk">⚠ סיום הפרויקט בסיכון — תלות קריטית באיחור</div>':'');
   el.append(prog,
     card("באיחור",overdue,"אין משימות באיחור",true),
+    riskCard,
     card("פעיל היום",active,"אין משימות פעילות היום"),
     card("בשבוע הקרוב",soon,"אין משימות מתוכננות לשבוע הקרוב"));
 }
@@ -536,7 +608,20 @@ function renderGantt(L){
       const del=document.createElement("button");del.className="del";del.textContent="×";del.title="מחיקה";
       del.onclick=()=>{st.tasks.splice(st.tasks.indexOf(t),1);render();};
 
-      row.append(grip,chk,dot,name,owner,dates,del);taskList.appendChild(row);
+      const dep=document.createElement("button");dep.className="dep"+(t.after?" linked":"");dep.textContent="⛓";
+      const pre=t.after?taskById(t.after):null;
+      dep.title=pre?("תלוי ב: "+pre.name+" · לחיצה לשינוי"):"הגדרת תלות במשימה אחרת";
+      dep.onclick=()=>{
+        const sel=document.createElement("select");sel.className="depsel";
+        sel.add(new Option("ללא תלות",""));
+        allTasks().forEach(({t:o})=>{if(o!==t)sel.add(new Option(o.name,o.id));});
+        sel.value=t.after||"";
+        sel.onchange=()=>{t.after=sel.value||undefined;render();};
+        sel.onblur=()=>render();
+        dep.replaceWith(sel);sel.focus();
+      };
+
+      row.append(grip,chk,dot,name,owner,dep,dates,del);taskList.appendChild(row);
     });
     stage.appendChild(taskList);
 
@@ -581,22 +666,28 @@ function renderGantt(L){
       const br=document.createElement("div");br.className="barrow";
       const s=pd(t.start),e=pd(t.end||t.start);
       const sc=colIndex(L.min,s),ec=colIndex(L.min,e),span=ec-sc+1;
+      const ur=upstreamRisk(t),dr=downstreamRisk(t);
+      const riskCls=(ur?" risk-"+ur:"")+(dr?" dep-risk":"");
+      const nDeps=dependentsOf(t).length;
+      const flag=nDeps&&!t.done?"⚑ ":"";
+      const riskTip=(nDeps?" · משימה קריטית — תלויות בה "+nDeps+" משימות":"")
+        +(dr?" · בסיכון: המשימה שלפניה ("+taskById(t.after).name+") באיחור":"");
       if(t.kind==="milestone"){
-        const dm=document.createElement("div");dm.className="milestone"+(t.done?" done":"");
+        const dm=document.createElement("div");dm.className="milestone"+(t.done?" done":"")+riskCls;
         dm.style.background=cv;dm.style.left=(sc*COLW+COLW/2-9)+"px";
-        dm.title=t.name+" · "+fmtLong(s)+" · לחיצה: בוצע/לא בוצע";
+        dm.title=t.name+" · "+fmtLong(s)+riskTip+" · לחיצה: בוצע/לא בוצע";
         dm.onclick=()=>{t.done=!t.done;render();};
         br.appendChild(dm);
         const lb=document.createElement("div");lb.className="ms-label"+(t.done?" done":"");
-        lb.style.left=(sc*COLW+COLW)+"px";lb.textContent=(t.done?"✓ ":"")+t.name;br.appendChild(lb);
+        lb.style.left=(sc*COLW+COLW)+"px";lb.textContent=(t.done?"✓ ":flag)+t.name;br.appendChild(lb);
         barLabels.set(t,lb);barEls.set(t,dm);
       }else{
         const bar=document.createElement("div");
-        bar.className="bar"+(t.kind==="lead"?" lead":"")+(t.done?" done":"")+(isOverdue(t)?" overdue":"");
+        bar.className="bar"+(t.kind==="lead"?" lead":"")+(t.done?" done":"")+(isOverdue(t)?" overdue":"")+riskCls;
         bar.style.background=cv;bar.style.left=(sc*COLW)+"px";bar.style.width=(span*COLW-4)+"px";
         bar.title=t.name+(t.owner?" · "+t.owner:"")+" · "+fmtLong(s)+(span>1?(" – "+fmtLong(e)):"")
-          +(t.note?(" · "+t.note):"")+" · לחיצה: בוצע/לא בוצע · גרירה: שינוי תאריכים";
-        const lab=document.createElement("span");lab.textContent=(t.done?"✓ ":"")+t.name;
+          +(t.note?(" · "+t.note):"")+riskTip+" · לחיצה: בוצע/לא בוצע · גרירה: שינוי תאריכים";
+        const lab=document.createElement("span");lab.textContent=(t.done?"✓ ":flag)+t.name;
         lab.className="bar-out"+(t.done?" done":"");lab.style.left=((sc+span)*COLW+6)+"px";br.appendChild(lab);
         barLabels.set(t,lab);barEls.set(t,bar);
         if(t.kind==="lead"){const cap=document.createElement("div");cap.className="cap";bar.appendChild(cap);}

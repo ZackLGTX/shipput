@@ -110,6 +110,7 @@
   .today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--today);z-index:6;pointer-events:none}
   .today-line::after{content:"היום";position:absolute;top:2px;left:4px;font-size:10px;color:#fff;
     background:var(--today);padding:1px 5px;border-radius:4px;font-weight:700;white-space:nowrap}
+  html[lang=ar] .today-line::after{content:"اليوم"}
 
   .stagebar-sep{height:var(--stageh);position:relative}
   .stagebar-sep::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--line)}
@@ -215,22 +216,23 @@
 <div class="wrap">
   <header>
     <div class="title-block">
-      <h1>תכנית עבודה — שיפוץ</h1>
-      <div class="sub">לוח זמנים לפי שבועות · כולל מדידות וזמני אספקה</div>
+      <h1 data-i18n="title">תכנית עבודה — שיפוץ</h1>
+      <div class="sub" data-i18n="sub">לוח זמנים לפי שבועות · כולל מדידות וזמני אספקה</div>
     </div>
     <div class="spacer"></div>
     <div class="actions">
       <span class="sync" id="sync"></span>
-      <span class="seglabel">מיון:</span>
+      <button id="langBtn">العربية</button>
+      <span class="seglabel" data-i18n="sort">מיון:</span>
       <div class="seg" id="sortSeg">
-        <button data-mode="date">לפי תאריך</button>
-        <button data-mode="manual">ידני</button>
+        <button data-mode="date" data-i18n="byDate">לפי תאריך</button>
+        <button data-mode="manual" data-i18n="manual">ידני</button>
       </div>
-      <button id="addStage">+ שלב</button>
-      <button id="export">ייצוא</button>
-      <button id="importBtn">ייבוא</button>
+      <button id="addStage" data-i18n="addStage">+ שלב</button>
+      <button id="export" data-i18n="exportB">ייצוא</button>
+      <button id="importBtn" data-i18n="importB">ייבוא</button>
       <input type="file" id="importFile" accept="application/json" hidden>
-      <button class="primary" id="print">הדפסה / PDF</button>
+      <button class="primary" id="print" data-i18n="printB">הדפסה / PDF</button>
     </div>
   </header>
 
@@ -243,24 +245,24 @@
   <div class="legend" id="legend"></div>
 
   <section class="open calc">
-    <h2>מחשבון ימי עסקים</h2>
-    <div class="lead-sub">תאריך התחלה + מספר ימי עסקים = תאריך היעד. שבוע עבודה א׳–ה׳, מדלג על חגי ישראל (2026). הספירה מתחילה ביום העסקים הראשון שאחרי תאריך ההתחלה.</div>
+    <h2 data-i18n="calcTitle">מחשבון ימי עסקים</h2>
+    <div class="lead-sub" data-i18n="calcSub">תאריך התחלה + מספר ימי עסקים = תאריך היעד. שבוע עבודה א׳–ה׳, מדלג על חגי ישראל (2026). הספירה מתחילה ביום העסקים הראשון שאחרי תאריך ההתחלה.</div>
     <div class="calc-row">
-      <label>התחלה <input type="date" id="calcStart"></label>
-      <label>ימי עסקים <input type="number" id="calcDays" min="1" max="365" value="21"></label>
-      <label class="calc-fri"><input type="checkbox" id="calcFri"> כולל ימי שישי</label>
+      <label><span data-i18n="calcStart">התחלה</span> <input type="date" id="calcStart"></label>
+      <label><span data-i18n="calcDaysL">ימי עסקים</span> <input type="number" id="calcDays" min="1" max="365" value="21"></label>
+      <label class="calc-fri"><input type="checkbox" id="calcFri"> <span data-i18n="calcFri">כולל ימי שישי</span></label>
     </div>
     <div class="calc-result" id="calcResult"></div>
   </section>
 
   <section class="open">
-    <h2>פתוח / להזמין</h2>
-    <div class="lead-sub">פריטים שעדיין לא משובצים בלוח — לעקוב ולתאם מול הקבלן והספקים.</div>
+    <h2 data-i18n="openTitle">פתוח / להזמין</h2>
+    <div class="lead-sub" data-i18n="openSub">פריטים שעדיין לא משובצים בלוח — לעקוב ולתאם מול הקבלן והספקים.</div>
     <div id="openList"></div>
-    <button class="add-task" id="addOpen">+ פריט</button>
+    <button class="add-task" id="addOpen" data-i18n="addItem">+ פריט</button>
   </section>
 
-  <footer>תאריכים בפורמט יום.חודש · נשמר ומסונכרן אוטומטית לכל מי שפתח את הדף · "ייצוא" לגיבוי קובץ</footer>
+  <footer data-i18n="footer">תאריכים בפורמט יום.חודש · נשמר ומסונכרן אוטומטית לכל מי שפתח את הדף · "ייצוא" לגיבוי קובץ</footer>
 </div>
 
 <script>
@@ -324,9 +326,10 @@ const SB_HEADERS={apikey:SB_KEY,Authorization:"Bearer "+SB_KEY,"Content-Type":"a
 let data=load();
 function load(){ try{const r=localStorage.getItem(STORE_KEY); if(r){const d=JSON.parse(r); if(d.version===4) return d;}}catch(e){} return structuredClone(DEFAULT_DATA); }
 let syncTimer=null,lastRemoteStamp=null;
+let lastSyncState="ok";
 function setSync(s){const el=document.getElementById("sync");if(!el)return;
-  el.className="sync "+s;
-  el.textContent=s==="ok"?"מסונכרן ✓":(s==="saving"?"שומר…":"לא מסונכרן");}
+  lastSyncState=s;el.className="sync "+s;
+  el.textContent=s==="ok"?L10("synced"):(s==="saving"?L10("saving"):L10("unsynced"));}
 function save(){
   try{localStorage.setItem(STORE_KEY,JSON.stringify(data));}catch(e){}
   clearTimeout(syncTimer);
@@ -349,6 +352,7 @@ async function pullRemote(initial){
       /* don't clobber a field mid-typing; the next poll will catch up */
       if(!initial&&document.activeElement&&document.activeElement.tagName==="INPUT") return;
       data=row.data;render();
+      if(LANG==="ar") translateBatch(collectUserTexts()).then(gotNew=>{if(gotNew)render();});
       if(initial) focusToday();
     }
     setSync("ok");
@@ -356,6 +360,95 @@ async function pullRemote(initial){
 }
 pullRemote(true);
 setInterval(()=>pullRemote(false),20000);
+
+/* i18n: Hebrew default, Jordanian-flavored Arabic */
+const I18N={
+he:{
+  title:"תכנית עבודה — שיפוץ", sub:"לוח זמנים לפי שבועות · כולל מדידות וזמני אספקה",
+  sort:"מיון:", byDate:"לפי תאריך", manual:"ידני", addStage:"+ שלב",
+  exportB:"ייצוא", importB:"ייבוא", printB:"הדפסה / PDF",
+  synced:"מסונכרן ✓", saving:"שומר…", unsynced:"לא מסונכרן",
+  weeks:"שבועות", tasksChip:"משימות", startChip:"התחלה", endChip:"סיום (כולל אספקות)",
+  progress:"התקדמות", ofDone:(d,n)=>d+" מתוך "+n+" משימות הושלמו",
+  overdueT:"באיחור", noOverdue:"אין משימות באיחור",
+  risksT:"סיכוני תלויות", noRisk:"אין משימות קריטיות בסיכון",
+  activeT:"פעיל היום", noActive:"אין משימות פעילות היום",
+  soonT:"בשבוע הקרוב", noSoon:"אין משימות מתוכננות לשבוע הקרוב",
+  endRisk:"⚠ סיום הפרויקט בסיכון — תלות קריטית באיחור",
+  lateBy:n=>"באיחור "+n+" ימים", todayBang:"היום!", inDays:n=>"בעוד "+n+" ימים", more:n=>"+"+n+" נוספות",
+  msLegend:"מדידה / אבן דרך", leadLegend:"זמן אספקה (המתנה)",
+  tasksHead:"משימה", tasksWord:"משימות", addTask:"+ משימה", addItem:"+ פריט", owner:"אחראי",
+  clickHint:"לחיצה: בוצע/לא בוצע", dragHint:"גרירה: שינוי תאריכים",
+  criticalTip:n=>"משימה קריטית — תלויות בה "+n+" משימות",
+  depTip:a=>"בסיכון: המשימה שלפניה ("+a+") באיחור",
+  editHe:"",
+  calcTitle:"מחשבון ימי עסקים",
+  calcSub:"תאריך התחלה + מספר ימי עסקים = תאריך היעד. שבוע עבודה א׳–ה׳, מדלג על חגי ישראל (2026). הספירה מתחילה ביום העסקים הראשון שאחרי תאריך ההתחלה.",
+  calcStart:"התחלה", calcDaysL:"ימי עסקים", calcFri:"כולל ימי שישי",
+  calcEnter:"הזינו תאריך התחלה ומספר ימים",
+  calcNote:(cal,wk,hol)=>cal+" ימים קלנדריים · דילגנו על "+wk+" ימי סוף שבוע"+(hol?" ו־"+hol+" חגים":""),
+  openTitle:"פתוח / להזמין", openSub:"פריטים שעדיין לא משובצים בלוח — לעקוב ולתאם מול הקבלן והספקים.",
+  footer:'תאריכים בפורמט יום.חודש · נשמר ומסונכרן אוטומטית לכל מי שפתח את הדף · "ייצוא" לגיבוי קובץ',
+  daysShort:["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"],
+  weekdays:["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"],
+  locale:"he-IL",
+},
+ar:{
+  title:"خطة العمل — الترميم", sub:"جدول زمني حسب الأسابيع · يشمل القياسات ومواعيد التوريد",
+  sort:"ترتيب:", byDate:"حسب التاريخ", manual:"يدوي", addStage:"+ مرحلة",
+  exportB:"تصدير", importB:"استيراد", printB:"طباعة / PDF",
+  synced:"متزامن ✓", saving:"عم يحفظ…", unsynced:"مش متزامن",
+  weeks:"أسابيع", tasksChip:"مهام", startChip:"البداية", endChip:"النهاية (شامل التوريدات)",
+  progress:"التقدم", ofDone:(d,n)=>d+" من "+n+" مهمة منجزة",
+  overdueT:"متأخر", noOverdue:"ما في مهام متأخرة",
+  risksT:"مخاطر التبعيات", noRisk:"ما في مهام حرجة بخطر",
+  activeT:"شغال اليوم", noActive:"ما في مهام شغالة اليوم",
+  soonT:"الأسبوع الجاي", noSoon:"ما في مهام مخططة للأسبوع الجاي",
+  endRisk:"⚠ نهاية المشروع بخطر — مهمة حرجة متأخرة",
+  lateBy:n=>"متأخر "+n+" يوم", todayBang:"اليوم!", inDays:n=>"بعد "+n+" يوم", more:n=>"+"+n+" كمان",
+  msLegend:"قياس / معلم رئيسي", leadLegend:"مدة توريد (انتظار)",
+  tasksHead:"المهمة", tasksWord:"مهام", addTask:"+ مهمة", addItem:"+ بند", owner:"مسؤول",
+  clickHint:"كبسة: منجز/مش منجز", dragHint:"سحب: تغيير التواريخ",
+  criticalTip:n=>"مهمة حرجة — في "+n+" مهام معتمدة عليها",
+  depTip:a=>"بخطر: المهمة اللي قبلها ("+a+") متأخرة",
+  editHe:"التعديل بالعبرية فقط — بدّل اللغة للتحرير",
+  calcTitle:"حاسبة أيام العمل",
+  calcSub:"تاريخ البداية + عدد أيام العمل = تاريخ الهدف. أسبوع العمل أحد–خميس، مع تخطي الأعياد في إسرائيل (2026). العدّ يبدأ من أول يوم عمل بعد تاريخ البداية.",
+  calcStart:"البداية", calcDaysL:"أيام عمل", calcFri:"شامل أيام الجمعة",
+  calcEnter:"أدخلوا تاريخ بداية وعدد أيام",
+  calcNote:(cal,wk,hol)=>cal+" يوم تقويمي · تخطينا "+wk+" أيام ويكند"+(hol?" و"+hol+" أعياد":""),
+  openTitle:"مفتوح / للطلب", openSub:"بنود لسا مش مجدولة — للمتابعة والتنسيق مع المقاول والموردين.",
+  footer:"التواريخ بصيغة يوم.شهر · يتم الحفظ والمزامنة تلقائيًا لكل من يفتح الصفحة · «تصدير» لنسخة احتياطية",
+  daysShort:["ح","ن","ث","ر","خ","ج","س"],
+  weekdays:["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"],
+  locale:"ar-JO",
+}};
+let LANG=localStorage.getItem("gantt_lang")||"he";
+const L10=k=>I18N[LANG][k]!==undefined?I18N[LANG][k]:I18N.he[k];
+
+/* machine translation for user content (task/stage names), cached locally */
+const MT_KEY="gantt_mt_ar";
+let mtCache={};try{mtCache=JSON.parse(localStorage.getItem(MT_KEY))||{};}catch(e){}
+function mt(s){return LANG==="ar"&&s?(mtCache[s]||s):s;}
+async function translateBatch(texts){
+  const missing=[...new Set(texts.filter(t=>t&&t.trim()&&!mtCache[t]))];
+  if(!missing.length) return false;
+  await Promise.all(missing.map(async t=>{
+    try{
+      const r=await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=iw&tl=ar&dt=t&q="+encodeURIComponent(t));
+      const j=await r.json();
+      mtCache[t]=j[0].map(x=>x[0]).join("");
+    }catch(e){}
+  }));
+  try{localStorage.setItem(MT_KEY,JSON.stringify(mtCache));}catch(e){}
+  return true;
+}
+function collectUserTexts(){
+  const out=[];
+  data.stages.forEach(s=>{out.push(s.name);s.tasks.forEach(t=>{out.push(t.name);if(t.note)out.push(t.note);});});
+  (data.openItems||[]).forEach(o=>out.push(o.text));
+  return out;
+}
 
 /* dates */
 const DAY_HE=["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"];
@@ -365,7 +458,7 @@ function isRest(d){return d.getDay()===6;}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
 function colIndex(a,b){const s=new Date(a);s.setHours(0,0,0,0);const e=new Date(b);e.setHours(0,0,0,0);return Math.round((e-s)/864e5);}
 function fmtHeb(d){return d.getDate()+"."+(d.getMonth()+1)+(d.getFullYear()!==2026?"."+d.getFullYear():"");}
-function fmtLong(d){return d.toLocaleDateString("he-IL",{day:"numeric",month:"long",year:"numeric"});}
+function fmtLong(d){return d.toLocaleDateString(L10("locale"),{day:"numeric",month:"long",year:"numeric"});}
 function parseHeb(s,fallbackYear){
   s=(s||"").trim().replace(/[\/\-]/g,"."); const p=s.split(".").filter(x=>x!=="");
   if(p.length<2) return null;
@@ -483,8 +576,8 @@ function renderSortToggle(){
 function renderChips(L){
   const c=document.getElementById("chips");c.innerHTML="";
   const nWork=data.stages.filter(s=>!s.lead).reduce((a,s)=>a+s.tasks.length,0);
-  const items=[["שבועות",data.stages.filter(s=>!s.lead).length],["משימות",nWork],
-    ["התחלה",fmtLong(L.min)],["סיום (כולל אספקות)",fmtLong(L.max)]];
+  const items=[[L10("weeks"),data.stages.filter(s=>!s.lead).length],[L10("tasksChip"),nWork],
+    [L10("startChip"),fmtLong(L.min)],[L10("endChip"),fmtLong(L.max)]];
   items.forEach(([k,v])=>{const e=document.createElement("div");e.className="chip";e.innerHTML=k+": <b>"+v+"</b>";c.appendChild(e);});
 }
 
@@ -505,30 +598,30 @@ function renderDash(){
     items.slice(0,6).forEach(t=>{
       const di=document.createElement("div");di.className="di"+(od?" od":"");
       const sw=document.createElement("span");sw.className="sw2";sw.style.background=colorOf(stageOf(t));
-      const nm=document.createElement("span");nm.textContent=t.name;
+      const nm=document.createElement("span");nm.textContent=mt(t.name);
       const dt=document.createElement("span");dt.className="dt";
       dt.textContent=fmtHeb(pd(t.start))+(t.end&&t.end!==t.start?"–"+fmtHeb(pd(t.end)):"");
       di.append(sw,nm,dt);
       di.onclick=()=>focusTask(t);
       c.appendChild(di);
     });
-    if(items.length>6){const m=document.createElement("div");m.className="empty";m.textContent="+"+(items.length-6)+" נוספות";c.appendChild(m);}
+    if(items.length>6){const m=document.createElement("div");m.className="empty";m.textContent=L10("more")(items.length-6);c.appendChild(m);}
     return c;
   }
   /* dependency risks */
   const risky=ts.filter(t=>upstreamRisk(t));
   const riskCard=document.createElement("div");riskCard.className="card";
-  riskCard.innerHTML="<h3>סיכוני תלויות</h3>";
-  if(!risky.length){const e=document.createElement("div");e.className="empty";e.textContent="אין משימות קריטיות בסיכון";riskCard.appendChild(e);}
+  riskCard.innerHTML="<h3>"+L10("risksT")+"</h3>";
+  if(!risky.length){const e=document.createElement("div");e.className="empty";e.textContent=L10("noRisk");riskCard.appendChild(e);}
   risky.forEach(t=>{
     const lvl=upstreamRisk(t),d=daysToDeadline(t);
     const deps=dependentsOf(t);
     const di=document.createElement("div");di.className="di "+(lvl==="red"?"od":"warn");
     const sw=document.createElement("span");sw.className="sw2";sw.style.background=lvl==="red"?cssVar("--today"):"#D9A441";
     const nm=document.createElement("span");
-    nm.textContent=t.name+" ⟵ "+deps[0].name+(deps.length>1?" +"+(deps.length-1):"");
+    nm.textContent=mt(t.name)+" ⟵ "+mt(deps[0].name)+(deps.length>1?" +"+(deps.length-1):"");
     const dt=document.createElement("span");dt.className="dt";
-    dt.textContent=d<0?"באיחור "+(-d)+" ימים":(d===0?"היום!":"בעוד "+d+" ימים");
+    dt.textContent=d<0?L10("lateBy")(-d):(d===0?L10("todayBang"):L10("inDays")(d));
     di.append(sw,nm,dt);
     di.onclick=()=>focusTask(t);
     riskCard.appendChild(di);
@@ -543,15 +636,15 @@ function renderDash(){
     dependentsOf(t).forEach(walk);};
   reds.forEach(walk);
   const prog=document.createElement("div");prog.className="card";
-  prog.innerHTML='<h3>התקדמות</h3><div class="big">'+pct+'%</div>'+
+  prog.innerHTML='<h3>'+L10("progress")+'</h3><div class="big">'+pct+'%</div>'+
     '<div class="progress-wrap"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
-    '<div class="empty" style="margin-top:6px">'+done+' מתוך '+ts.length+' משימות הושלמו</div>'+
-    (endAtRisk?'<div class="endrisk">⚠ סיום הפרויקט בסיכון — תלות קריטית באיחור</div>':'');
+    '<div class="empty" style="margin-top:6px">'+L10("ofDone")(done,ts.length)+'</div>'+
+    (endAtRisk?'<div class="endrisk">'+L10("endRisk")+'</div>':'');
   el.append(prog,
-    card("באיחור",overdue,"אין משימות באיחור",true),
+    card(L10("overdueT"),overdue,L10("noOverdue"),true),
     riskCard,
-    card("פעיל היום",active,"אין משימות פעילות היום"),
-    card("בשבוע הקרוב",soon,"אין משימות מתוכננות לשבוע הקרוב"));
+    card(L10("activeT"),active,L10("noActive")),
+    card(L10("soonT"),soon,L10("noSoon")));
 }
 function focusTask(t){
   const el=barEls.get(t);if(!el)return;
@@ -563,11 +656,11 @@ function renderLegend(){
   const l=document.getElementById("legend");l.innerHTML="";
   data.stages.forEach(st=>{
     const it=document.createElement("div");it.className="item";
-    it.innerHTML='<span class="sw" style="background:'+colorOf(st)+'"></span>'+esc(st.name);
+    it.innerHTML='<span class="sw" style="background:'+colorOf(st)+'"></span>'+esc(mt(st.name));
     l.appendChild(it);
   });
-  const m=document.createElement("div");m.className="item";m.innerHTML='<span class="dm"></span>מדידה / אבן דרך';l.appendChild(m);
-  const ld=document.createElement("div");ld.className="item";ld.innerHTML='<span class="lh"></span>זמן אספקה (המתנה)';l.appendChild(ld);
+  const m=document.createElement("div");m.className="item";m.innerHTML='<span class="dm"></span>'+L10("msLegend");l.appendChild(m);
+  const ld=document.createElement("div");ld.className="item";ld.innerHTML='<span class="lh"></span>'+L10("leadLegend");l.appendChild(ld);
 }
 
 function renderGantt(L){
@@ -577,7 +670,7 @@ function renderGantt(L){
 
   /* panel */
   const tasks=document.createElement("div");tasks.className="tasks";
-  const head=document.createElement("div");head.className="head";head.textContent="משימה";tasks.appendChild(head);
+  const head=document.createElement("div");head.className="head";head.textContent=L10("tasksHead");tasks.appendChild(head);
 
   data.stages.forEach((st,si)=>{
     const stage=document.createElement("div");stage.className="stage";
@@ -591,10 +684,11 @@ function renderGantt(L){
       inp.oninput=()=>{st.color=inp.value;render();};
       inp.click();
     };
-    const sname=document.createElement("input");sname.className="stage-name";sname.value=st.name;
-    sname.oninput=()=>{st.name=sname.value;renderLegend();save();};
+    const sname=document.createElement("input");sname.className="stage-name";sname.value=mt(st.name);
+    if(LANG==="ar"){sname.readOnly=true;sname.title=L10("editHe");}
+    else sname.oninput=()=>{st.name=sname.value;renderLegend();save();};
     const smeta=document.createElement("span");smeta.className="stage-meta";
-    smeta.textContent=st.tasks.filter(x=>x.done).length+"/"+st.tasks.length+" משימות";
+    smeta.textContent=st.tasks.filter(x=>x.done).length+"/"+st.tasks.length+" "+L10("tasksWord");
     srow.append(sw,sname,smeta);stage.appendChild(srow);
 
     const taskList=document.createElement("div");taskList.className="task-list";taskList._si=si;
@@ -608,9 +702,10 @@ function renderGantt(L){
       chk.onchange=()=>{t.done=chk.checked;render();};
       const dot=document.createElement("span");dot.className="dot";
       dot.style.color=cv; dot.textContent = t.kind==="milestone"?"◆":(t.kind==="lead"?"▦":"▮");
-      const name=document.createElement("input");name.className="tname";name.value=t.name;
-      name.oninput=()=>{t.name=name.value;const lb=barLabels.get(t);if(lb)lb.textContent=(t.done?"✓ ":"")+name.value;save();};
-      const owner=document.createElement("input");owner.className="owner";owner.placeholder="אחראי";
+      const name=document.createElement("input");name.className="tname";name.value=mt(t.name);
+      if(LANG==="ar"){name.readOnly=true;name.title=L10("editHe");}
+      else name.oninput=()=>{t.name=name.value;const lb=barLabels.get(t);if(lb)lb.textContent=(t.done?"✓ ":"")+name.value;save();};
+      const owner=document.createElement("input");owner.className="owner";owner.placeholder=L10("owner");
       owner.value=t.owner||"";
       owner.oninput=()=>{t.owner=owner.value;save();};
 
@@ -649,7 +744,7 @@ function renderGantt(L){
     stage.appendChild(taskList);
 
     const aw=document.createElement("div");aw.className="add-wrap";
-    const add=document.createElement("button");add.className="add-task";add.textContent="+ משימה";
+    const add=document.createElement("button");add.className="add-task";add.textContent=L10("addTask");
     const baseStart = st.tasks.length?st.tasks[st.tasks.length-1].end:iso(L.min);
     add.onclick=()=>{st.tasks.push({name:"משימה חדשה",start:baseStart,end:baseStart});render();};
     aw.appendChild(add);stage.appendChild(aw);
@@ -666,8 +761,8 @@ function renderGantt(L){
   for(let c=0;c<L.total;c++){
     const d=addDays(L.min,c);dates.push(d);
     const de=document.createElement("div");de.className="day"+(isRest(d)?" weekend":"");
-    de.innerHTML='<span class="dnum">'+d.getDate()+'</span><span>'+DAY_HE[d.getDay()]+'</span>';days.appendChild(de);
-    const lab=d.toLocaleDateString("he-IL",{month:"long",year:"numeric"});
+    de.innerHTML='<span class="dnum">'+d.getDate()+'</span><span>'+L10("daysShort")[d.getDay()]+'</span>';days.appendChild(de);
+    const lab=d.toLocaleDateString(L10("locale"),{month:"long",year:"numeric"});
     if(curMon===null){curMon=lab;monStart=c;}
     else if(lab!==curMon){addMonth(months,curMon,(c-monStart)*COLW);curMon=lab;monStart=c;}
   }
@@ -693,24 +788,24 @@ function renderGantt(L){
       const riskCls=(ur?" risk-"+ur:"")+(dr?" dep-risk":"");
       const nDeps=dependentsOf(t).length;
       const flag=nDeps&&!t.done?"⚑ ":"";
-      const riskTip=(nDeps?" · משימה קריטית — תלויות בה "+nDeps+" משימות":"")
-        +(dr?" · בסיכון: המשימה שלפניה ("+taskById(t.after).name+") באיחור":"");
+      const riskTip=(nDeps?" · "+L10("criticalTip")(nDeps):"")
+        +(dr?" · "+L10("depTip")(mt(taskById(t.after).name)):"");
       if(t.kind==="milestone"){
         const dm=document.createElement("div");dm.className="milestone"+(t.done?" done":"")+riskCls;
         dm.style.background=cv;dm.style.left=(sc*COLW+COLW/2-9)+"px";
-        dm.title=t.name+" · "+fmtLong(s)+riskTip+" · לחיצה: בוצע/לא בוצע";
+        dm.title=mt(t.name)+" · "+fmtLong(s)+riskTip+" · "+L10("clickHint");
         dm.onclick=()=>{t.done=!t.done;render();};
         br.appendChild(dm);
         const lb=document.createElement("div");lb.className="ms-label"+(t.done?" done":"");
-        lb.style.left=(sc*COLW+COLW)+"px";lb.textContent=(t.done?"✓ ":flag)+t.name;br.appendChild(lb);
+        lb.style.left=(sc*COLW+COLW)+"px";lb.textContent=(t.done?"✓ ":flag)+mt(t.name);br.appendChild(lb);
         barLabels.set(t,lb);barEls.set(t,dm);
       }else{
         const bar=document.createElement("div");
         bar.className="bar"+(t.kind==="lead"?" lead":"")+(t.done?" done":"")+(isOverdue(t)?" overdue":"")+riskCls;
         bar.style.background=cv;bar.style.left=(sc*COLW)+"px";bar.style.width=(span*COLW-4)+"px";
-        bar.title=t.name+(t.owner?" · "+t.owner:"")+" · "+fmtLong(s)+(span>1?(" – "+fmtLong(e)):"")
-          +(t.note?(" · "+t.note):"")+riskTip+" · לחיצה: בוצע/לא בוצע · גרירה: שינוי תאריכים";
-        const lab=document.createElement("span");lab.textContent=(t.done?"✓ ":flag)+t.name;
+        bar.title=mt(t.name)+(t.owner?" · "+t.owner:"")+" · "+fmtLong(s)+(span>1?(" – "+fmtLong(e)):"")
+          +(t.note?(" · "+mt(t.note)):"")+riskTip+" · "+L10("clickHint")+" · "+L10("dragHint");
+        const lab=document.createElement("span");lab.textContent=(t.done?"✓ ":flag)+mt(t.name);
         lab.className="bar-out"+(t.done?" done":"");lab.style.left=((sc+span)*COLW+6)+"px";br.appendChild(lab);
         barLabels.set(t,lab);barEls.set(t,bar);
         if(t.kind==="lead"){const cap=document.createElement("div");cap.className="cap";bar.appendChild(cap);}
@@ -731,8 +826,9 @@ function renderOpen(){
     const row=document.createElement("div");row.className="oi"+(it.done?" done":"");
     const cb=document.createElement("input");cb.type="checkbox";cb.checked=!!it.done;
     cb.onchange=()=>{it.done=cb.checked;render();};
-    const tx=document.createElement("input");tx.className="oit";tx.value=it.text;
-    tx.oninput=()=>{it.text=tx.value;save();};
+    const tx=document.createElement("input");tx.className="oit";tx.value=mt(it.text);
+    if(LANG==="ar"){tx.readOnly=true;tx.title=L10("editHe");}
+    else tx.oninput=()=>{it.text=tx.value;save();};
     const del=document.createElement("button");del.className="del";del.textContent="×";
     del.onclick=()=>{data.openItems.splice(i,1);render();};
     row.append(cb,tx,del);list.appendChild(row);
@@ -799,7 +895,7 @@ function calcBusiness(){
   const sv=document.getElementById("calcStart").value;
   const n=parseInt(document.getElementById("calcDays").value,10);
   const withFri=document.getElementById("calcFri").checked;
-  if(!sv||!n||n<1){out.textContent="הזינו תאריך התחלה ומספר ימים";return;}
+  if(!sv||!n||n<1){out.textContent=L10("calcEnter");return;}
   const isBiz=d=>{
     const wd=d.getDay();
     if(wd===6) return false;            /* שבת */
@@ -814,9 +910,8 @@ function calcBusiness(){
     else{skipWk++;}
   }
   const cal=colIndex(pd(sv),d);
-  out.innerHTML='<b>'+fmtLong(d)+'</b> ('+["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"][d.getDay()]+')'+
-    '<span class="calc-note">'+cal+' ימים קלנדריים · דילגנו על '+skipWk+' ימי סוף שבוע'+
-    (skipHol?' ו־'+skipHol+' חגים':'')+'</span>';
+  out.innerHTML='<b>'+fmtLong(d)+'</b> ('+L10("weekdays")[d.getDay()]+')'+
+    '<span class="calc-note">'+L10("calcNote")(cal,skipWk,skipHol)+'</span>';
 }
 ["calcStart","calcDays","calcFri"].forEach(id=>document.getElementById(id).addEventListener("input",calcBusiness));
 document.getElementById("calcStart").value=iso(todayD());
@@ -831,7 +926,22 @@ function focusToday(){
   if(cell) cell.scrollIntoView({inline:"center",block:"nearest"});
 }
 
-render();
+/* language toggle */
+function applyLang(){
+  document.documentElement.lang=LANG==="ar"?"ar":"he";
+  document.getElementById("langBtn").textContent=LANG==="he"?"العربية":"עברית";
+  document.querySelectorAll("[data-i18n]").forEach(el=>{el.textContent=L10(el.dataset.i18n);});
+  setSync(lastSyncState);
+  render();calcBusiness();
+  if(LANG==="ar") translateBatch(collectUserTexts()).then(gotNew=>{if(gotNew)render();});
+}
+document.getElementById("langBtn").onclick=()=>{
+  LANG=LANG==="he"?"ar":"he";
+  localStorage.setItem("gantt_lang",LANG);
+  applyLang();
+};
+
+applyLang();
 focusToday();
 </script>
 </body>

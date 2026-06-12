@@ -190,6 +190,17 @@
   .oi.done .oit{text-decoration:line-through;color:var(--ink-soft)}
   .open .add-task{margin-top:10px}
 
+  /* business-day calculator */
+  .calc-row{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:6px 0 10px}
+  .calc-row label{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
+  .calc-row input[type=date],.calc-row input[type=number]{font-family:inherit;font-size:14px;
+    border:1px solid var(--line-strong);border-radius:7px;padding:6px 8px;background:#fff;color:var(--ink)}
+  .calc-row input[type=number]{width:70px;text-align:center}
+  .calc-fri{color:var(--ink-soft)!important;font-size:13px!important}
+  .calc-result{font-size:16px;padding:10px 14px;background:#F4F1E8;border-radius:9px}
+  .calc-result b{font-family:"Frank Ruhl Libre",serif;font-size:19px}
+  .calc-result .calc-note{display:block;font-size:12px;color:var(--ink-soft);margin-top:3px}
+
   footer{margin-top:26px;text-align:center;color:#aaa39a;font-size:12px}
 
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -230,6 +241,17 @@
   <div class="frame"><div class="gantt" id="gantt"></div></div>
 
   <div class="legend" id="legend"></div>
+
+  <section class="open calc">
+    <h2>מחשבון ימי עסקים</h2>
+    <div class="lead-sub">תאריך התחלה + מספר ימי עסקים = תאריך היעד. שבוע עבודה א׳–ה׳, מדלג על חגי ישראל (2026). הספירה מתחילה ביום העסקים הראשון שאחרי תאריך ההתחלה.</div>
+    <div class="calc-row">
+      <label>התחלה <input type="date" id="calcStart"></label>
+      <label>ימי עסקים <input type="number" id="calcDays" min="1" max="365" value="21"></label>
+      <label class="calc-fri"><input type="checkbox" id="calcFri"> כולל ימי שישי</label>
+    </div>
+    <div class="calc-result" id="calcResult"></div>
+  </section>
 
   <section class="open">
     <h2>פתוח / להזמין</h2>
@@ -761,6 +783,44 @@ function attachBarDrag(bar,t,L){
     else{t.done=!t.done;render();}
   });
 }
+
+/* business-day calculator: Israeli work week (Sun-Thu), official rest days of 2026 */
+const IL_HOLIDAYS=new Set([
+  "2026-04-02","2026-04-08",            /* פסח א׳ + שביעי של פסח */
+  "2026-04-22",                          /* יום העצמאות */
+  "2026-05-22",                          /* שבועות */
+  "2026-09-12","2026-09-13",             /* ראש השנה */
+  "2026-09-21",                          /* יום כיפור */
+  "2026-09-26",                          /* סוכות א׳ */
+  "2026-10-03",                          /* שמחת תורה */
+]);
+function calcBusiness(){
+  const out=document.getElementById("calcResult");
+  const sv=document.getElementById("calcStart").value;
+  const n=parseInt(document.getElementById("calcDays").value,10);
+  const withFri=document.getElementById("calcFri").checked;
+  if(!sv||!n||n<1){out.textContent="הזינו תאריך התחלה ומספר ימים";return;}
+  const isBiz=d=>{
+    const wd=d.getDay();
+    if(wd===6) return false;            /* שבת */
+    if(wd===5&&!withFri) return false;  /* שישי */
+    return !IL_HOLIDAYS.has(iso(d));
+  };
+  let d=pd(sv),count=0,skipWk=0,skipHol=0;
+  while(count<n){
+    d=addDays(d,1);
+    if(isBiz(d)){count++;}
+    else if(IL_HOLIDAYS.has(iso(d))){skipHol++;}
+    else{skipWk++;}
+  }
+  const cal=colIndex(pd(sv),d);
+  out.innerHTML='<b>'+fmtLong(d)+'</b> ('+["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"][d.getDay()]+')'+
+    '<span class="calc-note">'+cal+' ימים קלנדריים · דילגנו על '+skipWk+' ימי סוף שבוע'+
+    (skipHol?' ו־'+skipHol+' חגים':'')+'</span>';
+}
+["calcStart","calcDays","calcFri"].forEach(id=>document.getElementById(id).addEventListener("input",calcBusiness));
+document.getElementById("calcStart").value=iso(todayD());
+calcBusiness();
 
 /* focus the view on today's column (clamped to the plan range) */
 function focusToday(){

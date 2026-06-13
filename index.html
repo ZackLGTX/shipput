@@ -17,6 +17,49 @@
     --panelw:330px; --radius:7px;
     --shadow:0 1px 2px rgba(34,39,46,.06), 0 8px 24px rgba(34,39,46,.06);
   }
+  html[data-theme="dark"]{
+    --paper:#0E1013; --panel:#181B20; --ink:#E7E9EC; --ink-soft:#9BA3AD;
+    --line:#2A2F37; --line-strong:#3A414B; --weekend:#14171C; --today:#E2673F;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.45);
+    color-scheme:dark;
+  }
+  html[data-theme="dark"] .stage-name:focus,
+  html[data-theme="dark"] .tname:focus,
+  html[data-theme="dark"] .oi .oit:focus{background:#262B33}
+  html[data-theme="dark"] .task:hover,
+  html[data-theme="dark"] .dash .di:hover,
+  html[data-theme="dark"] .seg button:hover:not(.active),
+  html[data-theme="dark"] .task.dragging{background:#22262D}
+  html[data-theme="dark"] .dinput,
+  html[data-theme="dark"] .owner,
+  html[data-theme="dark"] .budget-summary .bcard,
+  html[data-theme="dark"] .calc-result,
+  html[data-theme="dark"] .lv-owner,
+  html[data-theme="dark"] .cost-add input,
+  html[data-theme="dark"] .calc-row input[type=date],
+  html[data-theme="dark"] .calc-row input[type=number],
+  html[data-theme="dark"] .budget-list .estin,
+  html[data-theme="dark"] .depsel{background:#20242B;color:var(--ink)}
+  html[data-theme="dark"] .dinput:focus,
+  html[data-theme="dark"] .owner:focus{background:#2A2F37}
+  html[data-theme="dark"] .progress-wrap,
+  html[data-theme="dark"] .cost-cat .cbarwrap{background:#2A2F37}
+  html[data-theme="dark"] .grip{color:#5b636e}
+  html[data-theme="dark"] .del,
+  html[data-theme="dark"] .dep,
+  html[data-theme="dark"] .dash .empty,
+  html[data-theme="dark"] .cost-empty,
+  html[data-theme="dark"] .owner::placeholder,
+  html[data-theme="dark"] .cost-add input::placeholder,
+  html[data-theme="dark"] .calc-row input::placeholder,
+  html[data-theme="dark"] .budget-list .estin::placeholder{color:#6B7480}
+  html[data-theme="dark"] button.primary{color:#14171C}
+  html[data-theme="dark"] button.primary:hover{background:#fff}
+  html[data-theme="dark"] .seg button.active{color:#14171C}
+  html[data-theme="dark"] .budget-summary .bcard.proj{background:#2b313a;color:var(--ink)}
+  html[data-theme="dark"] .budget-summary .bcard.proj .blabel{color:var(--ink-soft)}
+  html[data-theme="dark"] .legend .dm{border-color:var(--panel)}
+
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{background:var(--paper);color:var(--ink);font-family:"Assistant",system-ui,sans-serif;
@@ -314,6 +357,7 @@
       <span class="sync" id="sync"></span>
       <button id="langBtn">العربية</button>
       <button id="viewBtn"></button>
+      <button id="themeBtn" title="מצב כהה/בהיר">🌙</button>
       <span class="seglabel" data-i18n="sort">מיון:</span>
       <div class="seg" id="sortSeg">
         <button data-mode="date" data-i18n="byDate">לפי תאריך</button>
@@ -1237,6 +1281,19 @@ function focusToday(){
   const cell=document.querySelectorAll(".gridbg .gcell")[tc];
   if(cell) cell.scrollIntoView({inline:"center",block:"nearest"});
 }
+
+/* theme toggle: dark / light */
+let THEME=localStorage.getItem("gantt_theme")||"dark";
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme",THEME);
+  document.getElementById("themeBtn").textContent=THEME==="dark"?"☀️":"🌙";
+}
+document.getElementById("themeBtn").onclick=()=>{
+  THEME=THEME==="dark"?"light":"dark";
+  localStorage.setItem("gantt_theme",THEME);
+  applyTheme();
+};
+applyTheme();
 
 /* view toggle: gantt vs phone-friendly list */
 let VIEW=localStorage.getItem("gantt_view")||(window.innerWidth<700?"list":"gantt");

@@ -191,6 +191,38 @@
   .oi.done .oit{text-decoration:line-through;color:var(--ink-soft)}
   .open .add-task{margin-top:10px}
 
+  /* costs */
+  .cost-summary{display:flex;flex-wrap:wrap;gap:18px;align-items:baseline;margin:4px 0 14px}
+  .cost-summary .total{font-family:"Frank Ruhl Libre",serif;font-size:28px;font-weight:800;color:var(--ink)}
+  .cost-summary .total small{font-size:14px;font-weight:600;color:var(--ink-soft);margin-inline-start:6px}
+  .cost-summary .csub{font-size:13px;color:var(--ink-soft)}
+  .cost-chart{margin:0 0 16px}
+  .cost-chart svg{width:100%;height:150px;display:block;overflow:visible}
+  .cost-chart .area{fill:rgba(74,124,89,.13)}
+  .cost-chart .line{fill:none;stroke:#4a7c59;stroke-width:2}
+  .cost-chart .pt{fill:#4a7c59}
+  .cost-chart .axlbl{font-size:10px;fill:var(--ink-soft)}
+  .cost-chart .todayx{stroke:var(--today);stroke-width:1.5;stroke-dasharray:3 3}
+  .cost-cats{display:flex;flex-direction:column;gap:7px;margin:0 0 16px}
+  .cost-cat{display:flex;align-items:center;gap:10px;font-size:13px}
+  .cost-cat .cname{flex:0 0 130px;color:var(--ink);display:flex;align-items:center;gap:7px}
+  .cost-cat .cbarwrap{flex:1;height:14px;background:#EFEBE0;border-radius:99px;overflow:hidden}
+  .cost-cat .cbar{display:block;height:100%;border-radius:99px}
+  .cost-cat .camt{flex:0 0 auto;color:var(--ink-soft);font-size:12px;white-space:nowrap}
+  .cost-cat .sw3{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+  .cost-list{display:flex;flex-direction:column;margin:0 0 14px}
+  .cost-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}
+  .cost-row .crtag{font-size:11px;padding:2px 9px;border-radius:99px;color:#fff;white-space:nowrap}
+  .cost-row .crname{flex:1;min-width:0}
+  .cost-row .crdate{color:var(--ink-soft);font-size:12px;white-space:nowrap}
+  .cost-row .cramt{font-weight:700;white-space:nowrap}
+  .cost-add{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:6px}
+  .cost-add input{font-family:inherit;font-size:14px;border:1px solid var(--line-strong);
+    border-radius:7px;padding:7px 9px;background:#fff;color:var(--ink)}
+  .cost-add #ceName{flex:1;min-width:140px} .cost-add #ceAmount{width:110px}
+  .cost-add #ceCat{width:140px}
+  .cost-empty{color:#c2bcae;font-size:12.5px;padding:6px 0}
+
   /* business-day calculator */
   .calc-row{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:6px 0 10px}
   .calc-row label{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
@@ -281,6 +313,23 @@
 
   <div class="legend" id="legend"></div>
 
+  <section class="open costs">
+    <h2 data-i18n="costsTitle">עלויות הפרויקט</h2>
+    <div class="lead-sub" data-i18n="costsSub">הוצאות לפי תאריך וקטגוריה · הגרף מציג הוצאה מצטברת לאורך הפרויקט.</div>
+    <div class="cost-summary" id="costSummary"></div>
+    <div class="cost-chart" id="costChart"></div>
+    <div class="cost-cats" id="costCats"></div>
+    <div class="cost-list" id="costList"></div>
+    <div class="cost-add" id="costAdd">
+      <input type="text" id="ceName" data-i18n-ph="ceName" placeholder="תיאור ההוצאה">
+      <input type="number" id="ceAmount" min="0" step="any" data-i18n-ph="ceAmount" placeholder="₪ סכום">
+      <input type="date" id="ceDate">
+      <input type="text" id="ceCat" list="catList" data-i18n-ph="ceCat" placeholder="קטגוריה">
+      <datalist id="catList"></datalist>
+      <button class="primary" id="ceAddBtn" data-i18n="ceAdd">+ הוספה</button>
+    </div>
+  </section>
+
   <section class="open calc">
     <h2 data-i18n="calcTitle">מחשבון ימי עסקים</h2>
     <div class="lead-sub" data-i18n="calcSub">תאריך התחלה + מספר ימי עסקים = תאריך היעד. שבוע עבודה א׳–ה׳, מדלג על חגי ישראל (2026). הספירה מתחילה ביום העסקים הראשון שאחרי תאריך ההתחלה.</div>
@@ -353,7 +402,9 @@ const DEFAULT_DATA = {
     {text:"שיש למטבח — הזמנה, מדידה אחרי התקנת המטבח, ואז התקנה", done:false},
     {text:"הזמנת דלת ממ\"ד חדשה", done:false},
     {text:"קרמיקה למטבח — להזמין ולהתקין (לברר מול הקבלן)", done:false},
-  ]
+  ],
+  expenses:[],
+  categories:["קבלן","חומרים","חשמל","אינסטלציה","מטבח","חלונות ודלתות","ריצוף","צבע","אחר"],
 };
 
 const STORE_KEY="renovation_gantt_v4";
@@ -415,6 +466,10 @@ he:{
   lateBy:n=>"באיחור "+n+" ימים", todayBang:"היום!", inDays:n=>"בעוד "+n+" ימים", more:n=>"+"+n+" נוספות",
   msLegend:"מדידה / אבן דרך", leadLegend:"זמן אספקה (המתנה)",
   listView:"תצוגת רשימה", ganttView:"תצוגת לוח",
+  costsTitle:"עלויות הפרויקט", costsSub:"הוצאות לפי תאריך וקטגוריה · הגרף מציג הוצאה מצטברת לאורך הפרויקט.",
+  ceName:"תיאור ההוצאה", ceAmount:"₪ סכום", ceCat:"קטגוריה", ceAdd:"+ הוספה",
+  totalSpent:"סה״כ הוצאות", spentItems:n=>n+" הוצאות", noCosts:"עדיין לא נרשמו הוצאות",
+  spentSoFar:"הוצא עד היום", cumLabel:"מצטבר",
   tasksHead:"משימה", tasksWord:"משימות", addTask:"+ משימה", addItem:"+ פריט", owner:"אחראי",
   clickHint:"לחיצה: בוצע/לא בוצע", dragHint:"גרירה: שינוי תאריכים",
   criticalTip:n=>"משימה קריטית — תלויות בה "+n+" משימות",
@@ -446,6 +501,10 @@ ar:{
   lateBy:n=>"متأخر "+n+" يوم", todayBang:"اليوم!", inDays:n=>"بعد "+n+" يوم", more:n=>"+"+n+" كمان",
   msLegend:"قياس / معلم رئيسي", leadLegend:"مدة توريد (انتظار)",
   listView:"عرض قائمة", ganttView:"عرض مخطط",
+  costsTitle:"تكاليف المشروع", costsSub:"المصاريف حسب التاريخ والفئة · الرسم بيبيّن المصروف التراكمي على طول المشروع.",
+  ceName:"وصف المصروف", ceAmount:"₪ المبلغ", ceCat:"الفئة", ceAdd:"+ إضافة",
+  totalSpent:"إجمالي المصاريف", spentItems:n=>n+" مصاريف", noCosts:"لسا ما تسجلت مصاريف",
+  spentSoFar:"المصروف حتى اليوم", cumLabel:"تراكمي",
   tasksHead:"المهمة", tasksWord:"مهام", addTask:"+ مهمة", addItem:"+ بند", owner:"مسؤول",
   clickHint:"كبسة: منجز/مش منجز", dragHint:"سحب: تغيير التواريخ",
   criticalTip:n=>"مهمة حرجة — في "+n+" مهام معتمدة عليها",
@@ -568,7 +627,9 @@ function render(){
   ensureIds();inferDeps();
   if(data.sortMode!=="manual") sortStages();
   const L=computeLayout();
-  renderChips(L); renderLegend(); renderGantt(L); renderListView(); renderDash(); renderOpen(); renderSortToggle();
+  if(!data.expenses) data.expenses=[];
+  if(!data.categories) data.categories=["קבלן","חומרים","חשמל","אינסטלציה","מטבח","חלונות ודלתות","ריצוף","צבע","אחר"];
+  renderChips(L); renderLegend(); renderGantt(L); renderListView(); renderDash(); renderCosts(L); renderOpen(); renderSortToggle();
   save();
 }
 
@@ -889,6 +950,81 @@ function renderListView(){
   });
 }
 
+/* costs */
+const CAT_PALETTE=["#BF5A2A","#2E6E63","#B8860B","#46618E","#7C5C9E","#4a7c59","#A0522D","#577a3a","#8a8a8a"];
+function catColor(cat){
+  const i=data.categories.indexOf(cat);
+  if(i>=0) return CAT_PALETTE[i%CAT_PALETTE.length];
+  let h=0;for(const c of cat||"") h=(h*31+c.charCodeAt(0))>>>0;
+  return CAT_PALETTE[h%CAT_PALETTE.length];
+}
+function fmtMoney(n){return "₪"+Math.round(n).toLocaleString("en-US");}
+function renderCosts(L){
+  const exps=[...data.expenses].filter(e=>e.amount>0&&e.date).sort((a,b)=>pd(a.date)-pd(b.date));
+  const total=exps.reduce((a,e)=>a+(+e.amount),0);
+  const today=todayD();
+  const spentToday=exps.filter(e=>pd(e.date)<=today).reduce((a,e)=>a+(+e.amount),0);
+
+  /* datalist of categories */
+  const dl=document.getElementById("catList");dl.innerHTML="";
+  data.categories.forEach(c=>{const o=document.createElement("option");o.value=c;dl.appendChild(o);});
+
+  /* summary */
+  const sum=document.getElementById("costSummary");
+  sum.innerHTML='<div class="total">'+fmtMoney(total)+'<small>'+L10("totalSpent")+'</small></div>'+
+    (exps.length?'<div class="csub">'+L10("spentSoFar")+': <b>'+fmtMoney(spentToday)+'</b> · '+L10("spentItems")(exps.length)+'</div>':'');
+
+  /* cumulative chart */
+  const chart=document.getElementById("costChart");
+  if(!exps.length){chart.innerHTML='<div class="cost-empty">'+L10("noCosts")+'</div>';}
+  else{
+    const W=1000,H=150,padX=8,padTop=14,padBot=20;
+    const x0=L.min.getTime(),x1=L.max.getTime(),xs=x=>padX+(x1>x0?(x-x0)/(x1-x0):0)*(W-2*padX);
+    const ys=v=>padTop+(1-(total?v/total:0))*(H-padTop-padBot);
+    let cum=0;const pts=[[xs(x0),ys(0)]];
+    exps.forEach(e=>{const px=xs(pd(e.date).getTime());pts.push([px,ys(cum)]);cum+=(+e.amount);pts.push([px,ys(cum)]);});
+    pts.push([xs(x1),ys(cum)]);
+    const line=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+    const area=line+" L"+xs(x1).toFixed(1)+" "+ys(0).toFixed(1)+" L"+xs(x0).toFixed(1)+" "+ys(0).toFixed(1)+" Z";
+    const tx=xs(Math.min(Math.max(today.getTime(),x0),x1));
+    chart.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
+      '<path class="area" d="'+area+'"/>'+
+      '<line class="todayx" x1="'+tx.toFixed(1)+'" y1="'+padTop+'" x2="'+tx.toFixed(1)+'" y2="'+(H-padBot)+'"/>'+
+      '<path class="line" d="'+line+'"/>'+
+      exps.map(e=>'<circle class="pt" r="3" cx="'+xs(pd(e.date).getTime()).toFixed(1)+'" cy="'+ys((function(){let s=0;for(const x of exps){s+=+x.amount;if(x===e)break;}return s;})()).toFixed(1)+'"/>').join("")+
+      '<text class="axlbl" x="'+padX+'" y="'+(H-6)+'">'+fmtHeb(L.min)+'</text>'+
+      '<text class="axlbl" x="'+(W-padX)+'" y="'+(H-6)+'" text-anchor="end">'+fmtHeb(L.max)+'</text>'+
+      '<text class="axlbl" x="'+padX+'" y="'+(padTop-3)+'">'+fmtMoney(total)+'</text>'+
+      '</svg>';
+  }
+
+  /* category breakdown */
+  const cats=document.getElementById("costCats");cats.innerHTML="";
+  const byCat={};exps.forEach(e=>{const c=e.cat||L10("ceCat");byCat[c]=(byCat[c]||0)+(+e.amount);});
+  const maxCat=Math.max(1,...Object.values(byCat));
+  Object.entries(byCat).sort((a,b)=>b[1]-a[1]).forEach(([c,v])=>{
+    const col=catColor(c);
+    const row=document.createElement("div");row.className="cost-cat";
+    row.innerHTML='<span class="cname"><span class="sw3" style="background:'+col+'"></span>'+esc(mt(c))+'</span>'+
+      '<span class="cbarwrap"><span class="cbar" style="width:'+(v/maxCat*100)+'%;background:'+col+'"></span></span>'+
+      '<span class="camt">'+fmtMoney(v)+' · '+Math.round(v/total*100)+'%</span>';
+    cats.appendChild(row);
+  });
+
+  /* list (newest first) */
+  const list=document.getElementById("costList");list.innerHTML="";
+  [...exps].reverse().forEach(e=>{
+    const row=document.createElement("div");row.className="cost-row";
+    const tag=document.createElement("span");tag.className="crtag";tag.style.background=catColor(e.cat);tag.textContent=mt(e.cat||"—");
+    const nm=document.createElement("span");nm.className="crname";nm.textContent=mt(e.name||"");
+    const dt=document.createElement("span");dt.className="crdate";dt.textContent=fmtHeb(pd(e.date));
+    const amt=document.createElement("span");amt.className="cramt";amt.textContent=fmtMoney(+e.amount);
+    const del=document.createElement("button");del.className="del";del.textContent="×";
+    del.onclick=()=>{data.expenses.splice(data.expenses.indexOf(e),1);render();};
+    row.append(tag,nm,dt,amt,del);list.appendChild(row);
+  });
+}
+
 function renderOpen(){
   const list=document.getElementById("openList");list.innerHTML="";
   (data.openItems||[]).forEach((it,i)=>{
@@ -911,6 +1047,22 @@ document.getElementById("sortSeg").addEventListener("click",e=>{
 });
 document.getElementById("addStage").onclick=()=>{const i=data.stages.filter(s=>!s.lead).length;data.stages.push({name:"שבוע "+(i+1),color:SC[i%SC.length],tasks:[]});render();};
 document.getElementById("addOpen").onclick=()=>{(data.openItems=data.openItems||[]).push({text:"",done:false});render();};
+function addExpense(){
+  const name=document.getElementById("ceName");
+  const amount=document.getElementById("ceAmount");
+  const date=document.getElementById("ceDate");
+  const cat=document.getElementById("ceCat");
+  const amt=parseFloat(amount.value);
+  if(!amt||amt<=0||!date.value){amount.focus();return;}
+  const catVal=(cat.value||"").trim();
+  if(catVal&&!data.categories.includes(catVal)) data.categories.push(catVal);
+  data.expenses.push({name:name.value.trim(),amount:amt,date:date.value,cat:catVal});
+  name.value="";amount.value="";cat.value="";
+  render();name.focus();
+}
+document.getElementById("ceAddBtn").onclick=addExpense;
+["ceName","ceAmount","ceCat"].forEach(id=>document.getElementById(id).addEventListener("keydown",e=>{if(e.key==="Enter")addExpense();}));
+document.getElementById("ceDate").value=iso(todayD());
 document.getElementById("print").onclick=()=>window.print();
 document.getElementById("export").onclick=()=>{const b=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="תכנית-שיפוץ.json";a.click();URL.revokeObjectURL(a.href);};
 document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
@@ -1013,6 +1165,7 @@ function applyLang(){
   document.documentElement.lang=LANG==="ar"?"ar":"he";
   document.getElementById("langBtn").textContent=LANG==="he"?"العربية":"עברית";
   document.querySelectorAll("[data-i18n]").forEach(el=>{el.textContent=L10(el.dataset.i18n);});
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{el.placeholder=L10(el.dataset.i18nPh);});
   setSync(lastSyncState);
   render();calcBusiness();applyView();
   if(LANG==="ar") translateBatch(collectUserTexts()).then(gotNew=>{if(gotNew)render();});

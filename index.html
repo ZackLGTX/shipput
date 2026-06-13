@@ -191,6 +191,29 @@
   .oi.done .oit{text-decoration:line-through;color:var(--ink-soft)}
   .open .add-task{margin-top:10px}
 
+  /* budget */
+  .budget-summary{display:flex;flex-wrap:wrap;gap:10px;margin:4px 0 16px}
+  .budget-summary .bcard{flex:1;min-width:150px;background:#F4F1E8;border-radius:10px;padding:11px 14px}
+  .budget-summary .bcard.proj{background:var(--ink);color:#fff}
+  .budget-summary .blabel{font-size:12px;color:var(--ink-soft)}
+  .budget-summary .bcard.proj .blabel{color:rgba(255,255,255,.7)}
+  .budget-summary .bval{font-family:"Frank Ruhl Libre",serif;font-size:22px;font-weight:800;margin-top:2px}
+  .budget-list .bstage{margin-bottom:10px}
+  .budget-list .bsthead{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;
+    padding:6px 2px;border-bottom:1px solid var(--line)}
+  .budget-list .bsthead .swatch{width:11px;height:11px;border-radius:3px}
+  .budget-list .bsthead .bssub{margin-inline-start:auto;font-size:12px;color:var(--ink-soft);font-weight:600}
+  .budget-list .btask{display:flex;align-items:center;gap:10px;padding:7px 2px 7px 10px;font-size:13.5px}
+  .budget-list .btask.done .btname{color:var(--ink-soft);text-decoration:line-through}
+  .budget-list .btname{flex:1;min-width:0}
+  .budget-list .bdot{font-size:10px;flex:0 0 auto}
+  .budget-list .estin{width:104px;flex:0 0 auto;font-family:inherit;font-size:13px;text-align:end;
+    border:1px solid var(--line-strong);border-radius:6px;padding:5px 8px;background:#fff;color:var(--ink)}
+  .budget-list .estin:focus{outline:none;border-color:var(--ink)}
+  .budget-list .estin::placeholder{color:#c9c3b6}
+  .cost-chart .budgetline{stroke:var(--ink);stroke-width:1.5;stroke-dasharray:5 4;opacity:.55}
+  .cost-chart .budgetlbl{font-size:10px;fill:var(--ink);opacity:.7}
+
   /* costs */
   .cost-summary{display:flex;flex-wrap:wrap;gap:18px;align-items:baseline;margin:4px 0 14px}
   .cost-summary .total{font-family:"Frank Ruhl Libre",serif;font-size:28px;font-weight:800;color:var(--ink)}
@@ -312,6 +335,13 @@
   <div class="listview" id="listView"></div>
 
   <div class="legend" id="legend"></div>
+
+  <section class="open budget">
+    <h2 data-i18n="budgetTitle">תקציב הפרויקט</h2>
+    <div class="lead-sub" data-i18n="budgetSub">עלות צפויה שנותרה לכל משימה · יחד עם ההוצאות בפועל מרכיב תקציב כולל.</div>
+    <div class="budget-summary" id="budgetSummary"></div>
+    <div class="budget-list" id="budgetList"></div>
+  </section>
 
   <section class="open costs">
     <h2 data-i18n="costsTitle">עלויות הפרויקט</h2>
@@ -470,6 +500,9 @@ he:{
   ceName:"תיאור ההוצאה", ceAmount:"₪ סכום", ceCat:"קטגוריה", ceAdd:"+ הוספה",
   totalSpent:"סה״כ הוצאות", spentItems:n=>n+" הוצאות", noCosts:"עדיין לא נרשמו הוצאות",
   spentSoFar:"הוצא עד היום", cumLabel:"מצטבר",
+  budgetTitle:"תקציב הפרויקט", budgetSub:"עלות צפויה שנותרה לכל משימה · יחד עם ההוצאות בפועל מרכיב תקציב כולל.",
+  bSpent:"הוצא בפועל", bExpected:"צפוי להוצאה", bProjected:"תקציב כולל צפוי",
+  estPh:"₪ צפוי", budgetCeil:"תקציב כולל",
   tasksHead:"משימה", tasksWord:"משימות", addTask:"+ משימה", addItem:"+ פריט", owner:"אחראי",
   clickHint:"לחיצה: בוצע/לא בוצע", dragHint:"גרירה: שינוי תאריכים",
   criticalTip:n=>"משימה קריטית — תלויות בה "+n+" משימות",
@@ -505,6 +538,9 @@ ar:{
   ceName:"وصف المصروف", ceAmount:"₪ المبلغ", ceCat:"الفئة", ceAdd:"+ إضافة",
   totalSpent:"إجمالي المصاريف", spentItems:n=>n+" مصاريف", noCosts:"لسا ما تسجلت مصاريف",
   spentSoFar:"المصروف حتى اليوم", cumLabel:"تراكمي",
+  budgetTitle:"ميزانية المشروع", budgetSub:"التكلفة المتوقعة المتبقية لكل مهمة · مع المصاريف الفعلية بتشكّل ميزانية كاملة.",
+  bSpent:"المصروف الفعلي", bExpected:"متوقع صرفه", bProjected:"الميزانية الكلية المتوقعة",
+  estPh:"₪ متوقع", budgetCeil:"الميزانية الكلية",
   tasksHead:"المهمة", tasksWord:"مهام", addTask:"+ مهمة", addItem:"+ بند", owner:"مسؤول",
   clickHint:"كبسة: منجز/مش منجز", dragHint:"سحب: تغيير التواريخ",
   criticalTip:n=>"مهمة حرجة — في "+n+" مهام معتمدة عليها",
@@ -629,7 +665,7 @@ function render(){
   const L=computeLayout();
   if(!data.expenses) data.expenses=[];
   if(!data.categories) data.categories=["קבלן","חומרים","חשמל","אינסטלציה","מטבח","חלונות ודלתות","ריצוף","צבע","אחר"];
-  renderChips(L); renderLegend(); renderGantt(L); renderListView(); renderDash(); renderCosts(L); renderOpen(); renderSortToggle();
+  renderChips(L); renderLegend(); renderGantt(L); renderListView(); renderDash(); renderBudget(); renderCosts(L); renderOpen(); renderSortToggle();
   save();
 }
 
@@ -950,6 +986,55 @@ function renderListView(){
   });
 }
 
+/* budget */
+function budgetTotals(){
+  const spent=(data.expenses||[]).filter(e=>e.amount>0).reduce((a,e)=>a+(+e.amount),0);
+  let est=0;allTasks().forEach(({t})=>{est+=(+(t.est)||0);});
+  return {spent,est,projected:spent+est};
+}
+function renderBudget(){
+  const sum=document.getElementById("budgetSummary");
+  const {spent,est,projected}=budgetTotals();
+  const card=(lbl,val,cls)=>'<div class="bcard'+(cls?" "+cls:"")+'"><div class="blabel">'+lbl+'</div><div class="bval">'+fmtMoney(val)+'</div></div>';
+  sum.innerHTML=card(L10("bSpent"),spent)+card(L10("bExpected"),est)+card(L10("bProjected"),projected,"proj");
+
+  const list=document.getElementById("budgetList");list.innerHTML="";
+  data.stages.forEach((st,si)=>{
+    const cv=colorOf(st);
+    const sub=st.tasks.reduce((a,t)=>a+(+(t.est)||0),0);
+    const box=document.createElement("div");box.className="bstage";
+    const head=document.createElement("div");head.className="bsthead";
+    head.innerHTML='<span class="swatch" style="background:'+cv+'"></span>'+esc(mt(st.name))+
+      '<span class="bssub" data-bsub="'+si+'">'+fmtMoney(sub)+'</span>';
+    box.appendChild(head);
+    st.tasks.forEach(t=>{
+      const row=document.createElement("div");row.className="btask"+(t.done?" done":"");
+      const dot=document.createElement("span");dot.className="bdot";dot.style.color=cv;
+      dot.textContent=t.kind==="milestone"?"◆":(t.kind==="lead"?"▦":"▮");
+      const nm=document.createElement("span");nm.className="btname";nm.textContent=mt(t.name);
+      const inp=document.createElement("input");inp.className="estin";inp.type="number";inp.min="0";inp.step="any";
+      inp.placeholder=L10("estPh");inp.value=(t.est!==undefined&&t.est!=="")?t.est:"";
+      inp.oninput=()=>{const v=parseFloat(inp.value);t.est=isNaN(v)?undefined:v;save();refreshBudgetLive();};
+      inp.onblur=()=>render();
+      row.append(dot,nm,inp);box.appendChild(row);
+    });
+    list.appendChild(box);
+  });
+}
+/* live update without rebuilding inputs (keeps focus while typing) */
+function refreshBudgetLive(){
+  const {spent,est,projected}=budgetTotals();
+  const vals=document.querySelectorAll("#budgetSummary .bval");
+  if(vals[0])vals[0].textContent=fmtMoney(spent);
+  if(vals[1])vals[1].textContent=fmtMoney(est);
+  if(vals[2])vals[2].textContent=fmtMoney(projected);
+  data.stages.forEach((st,si)=>{
+    const sub=st.tasks.reduce((a,t)=>a+(+(t.est)||0),0);
+    const el=document.querySelector('[data-bsub="'+si+'"]');if(el)el.textContent=fmtMoney(sub);
+  });
+  renderCosts(computeLayout());
+}
+
 /* costs */
 const CAT_PALETTE=["#BF5A2A","#2E6E63","#B8860B","#46618E","#7C5C9E","#4a7c59","#A0522D","#577a3a","#8a8a8a"];
 function catColor(cat){
@@ -978,18 +1063,24 @@ function renderCosts(L){
   const chart=document.getElementById("costChart");
   if(!exps.length){chart.innerHTML='<div class="cost-empty">'+L10("noCosts")+'</div>';}
   else{
+    const projected=budgetTotals().projected;
+    const top=Math.max(projected,total,1);
     const W=1000,H=150,padX=8,padTop=14,padBot=20;
     const x0=L.min.getTime(),x1=L.max.getTime(),xs=x=>padX+(x1>x0?(x-x0)/(x1-x0):0)*(W-2*padX);
-    const ys=v=>padTop+(1-(total?v/total:0))*(H-padTop-padBot);
+    const ys=v=>padTop+(1-v/top)*(H-padTop-padBot);
     let cum=0;const pts=[[xs(x0),ys(0)]];
     exps.forEach(e=>{const px=xs(pd(e.date).getTime());pts.push([px,ys(cum)]);cum+=(+e.amount);pts.push([px,ys(cum)]);});
     pts.push([xs(x1),ys(cum)]);
     const line=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
     const area=line+" L"+xs(x1).toFixed(1)+" "+ys(0).toFixed(1)+" L"+xs(x0).toFixed(1)+" "+ys(0).toFixed(1)+" Z";
     const tx=xs(Math.min(Math.max(today.getTime(),x0),x1));
+    const showBudget=projected>total+1;
+    const by=ys(projected);
     chart.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
       '<path class="area" d="'+area+'"/>'+
       '<line class="todayx" x1="'+tx.toFixed(1)+'" y1="'+padTop+'" x2="'+tx.toFixed(1)+'" y2="'+(H-padBot)+'"/>'+
+      (showBudget?'<line class="budgetline" x1="'+padX+'" y1="'+by.toFixed(1)+'" x2="'+(W-padX)+'" y2="'+by.toFixed(1)+'"/>'+
+        '<text class="budgetlbl" x="'+(W-padX)+'" y="'+(by-4).toFixed(1)+'" text-anchor="end">'+L10("budgetCeil")+': '+fmtMoney(projected)+'</text>':'')+
       '<path class="line" d="'+line+'"/>'+
       exps.map(e=>'<circle class="pt" r="3" cx="'+xs(pd(e.date).getTime()).toFixed(1)+'" cy="'+ys((function(){let s=0;for(const x of exps){s+=+x.amount;if(x===e)break;}return s;})()).toFixed(1)+'"/>').join("")+
       '<text class="axlbl" x="'+padX+'" y="'+(H-6)+'">'+fmtHeb(L.min)+'</text>'+
